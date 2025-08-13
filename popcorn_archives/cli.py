@@ -1,4 +1,5 @@
 import click
+import csv
 from tqdm import tqdm 
 from . import database
 from . import core
@@ -9,6 +10,35 @@ def cli():
     Popcorn Archives: A CLI tool for managing your movie watchlist.
     """
     database.init_db()
+
+@cli.command()
+def stats():
+    """Displays statistics about the movie archive."""
+    click.echo(click.style("Popcorn Archives Statistics", bold=True, fg='cyan'))
+    click.echo("-" * 30)
+
+    total_count = database.get_total_movies_count()
+    if total_count == 0:
+        click.echo("The archive is empty. Add some movies first!")
+        return
+
+    click.echo(f"Total Movies: {click.style(str(total_count), fg='green')}")
+
+    oldest_movies = database.get_oldest_movie()
+    if oldest_movies:
+        # We only display the first one if there are multiple
+        title, year = oldest_movies[0]
+        click.echo(f"Oldest Movie: {title} ({year})")
+    
+    newest_movies = database.get_newest_movie()
+    if newest_movies:
+        title, year = newest_movies[0]
+        click.echo(f"Newest Movie: {title} ({year})")
+
+    top_decade_info = database.get_most_frequent_decade()
+    if top_decade_info:
+        decade, count = top_decade_info
+        click.echo(f"Busiest Decade: The {decade}s (with {count} movies)")
 
 @cli.command()
 @click.argument('name')
@@ -92,42 +122,6 @@ def import_csv(filepath):
                 count += 1
         click.echo(click.style(f"{count} new movies imported successfully from the CSV file.", fg='green'))
 
-
-@cli.command()
-@click.argument('name')
-def delete(name):
-    """
-    Deletes a specific movie from the archive.
-    Movie format: "Title YYYY" or "Title (YYYY)"
-    """
-    title, year = core.parse_movie_title(name)
-    if not title or not year:
-        click.echo(click.style(f"Error: Invalid movie format for '{name}'.", fg='red'))
-        return
-
-    # Get confirmation from the user
-    prompt_message = f"Are you sure you want to delete '{title} ({year})'?"
-    if click.confirm(prompt_message):
-        if database.delete_movie(title, year):
-            click.echo(click.style(f"Movie '{title} ({year})' was successfully deleted.", fg='green'))
-        else:
-            click.echo(click.style(f"Movie '{title} ({year})' not found in the archive.", fg='yellow'))
-
-
-@cli.command()
-def clear():
-    """
-    !!! Deletes ALL movies from the archive !!!
-    """
-    # Get serious confirmation from the user
-    warning = "Warning: This operation will permanently delete ALL movies from your archive."
-    click.echo(click.style(warning, fg='red', bold=True))
-    
-    if click.confirm("Are you absolutely sure you want to do this?"):
-        database.clear_all_movies()
-        click.echo(click.style("The movie archive has been successfully cleared.", fg='green'))
-
-
 @cli.command()
 @click.argument('query')
 def search(query):
@@ -153,31 +147,92 @@ def random():
 
 @cli.command()
 @click.argument('year', type=int)
-def year(year_num):
+def year(year):
     """Lists all movies from a specific year."""
-    results = database.get_movies_by_year(year_num)
+    results = database.get_movies_by_year(year)
     if results:
-        click.echo(f"Movies from {year_num}:")
+        click.echo(f"Movies from {year}:")
         for title, _ in results:
-            click.echo(f"- {title}")
+            safe_echo(f"- {title}")
     else:
-        click.echo(f"No movies found for the year {year_num}.")
+        click.echo(f"No movies found for the year {year}.")
 
 @cli.command()
 @click.argument('decade', type=int)
-def decade(decade_num):
+def decade(decade):
     """Lists all movies from a specific decade."""
-    if not (1800 <= decade_num <= 2100 and decade_num % 10 == 0):
+    if not (1800 <= decade <= 2100 and decade % 10 == 0):
         click.echo(click.style("Error: Decade must be a valid start of a decade (e.g., 1980, 1990, 2020).", fg='red'))
         return
         
-    results = database.get_movies_by_decade(decade_num)
+    results = database.get_movies_by_decade(decade)
     if results:
-        click.echo(f"Movies from the {decade_num}s:")
-        for title, year in results:
-            click.echo(f"- {title} ({year})")
+        click.echo(f"Movies from the {decade}s:")
+        for title, yr in results:
+            safe_echo(f"- {title} ({yr})")
     else:
-        click.echo(f"No movies found for the {decade_num}s decade.")
+        click.echo(f"No movies found for the {decade}s decade.")
+
+@cli.command()
+@click.argument('name')
+def delete(name):
+    """
+    Deletes a specific movie from the archive.
+    Movie format: "Title YYYY" or "Title (YYYY)"
+    """
+    title, year = core.parse_movie_title(name)
+    if not title or not year:
+        click.echo(click.style(f"Error: Invalid movie format for '{name}'.", fg='red'))
+        return
+
+    # Get confirmation from the user
+    prompt_message = f"Are you sure you want to delete '{title} ({year})'?"
+    if click.confirm(prompt_message):
+        if database.delete_movie(title, year):
+            click.echo(click.style(f"Movie '{title} ({year})' was successfully deleted.", fg='green'))
+        else:
+            click.echo(click.style(f"Movie '{title} ({year})' not found in the archive.", fg='yellow'))
+
+@cli.command()
+@click.argument('filepath', type=click.Path(dir_okay=False, writable=True))
+def export(filepath):
+    """Exports the entire movie archive to a CSV file."""
+    click.echo(f"Exporting archive to '{filepath}'...")
+    
+    all_movies = database.get_all_movies()
+    if not all_movies:
+        click.echo(click.style("Archive is empty. Nothing to export.", fg='yellow'))
+        return
+
+    try:
+        with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.writer(csvfile)
+            
+            # Write the header
+            writer.writerow(['name'])
+            
+            # Write the movie data
+            for title, year in tqdm(all_movies, desc="Exporting"):
+                writer.writerow([f"{title} {year}"])
+        
+        click.echo(click.style(f"Successfully exported {len(all_movies)} movies to '{filepath}'.", fg='green'))
+
+    except IOError as e:
+        click.echo(click.style(f"Error: Could not write to file at '{filepath}'.\n{e}", fg='red'))
+
+@cli.command()
+def clear():
+    """
+    !!! Deletes ALL movies from the archive !!!
+    """
+    # Get serious confirmation from the user
+    warning = "Warning: This operation will permanently delete ALL movies from your archive."
+    click.echo(click.style(warning, fg='red', bold=True))
+    
+    if click.confirm("Are you absolutely sure you want to do this?"):
+        database.clear_all_movies()
+        click.echo(click.style("The movie archive has been successfully cleared.", fg='green'))
+
 
 if __name__ == '__main__':
     cli()

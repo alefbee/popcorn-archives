@@ -99,6 +99,14 @@ The movie name must be in `"Title YYYY"` format.
 popcorn-archives add "Casablanca 1942"
 ```
 
+### View Archive Statistics
+
+Get a quick overview of your movie collection, including total counts and other interesting facts.
+
+```bash
+popcorn-archives stats
+```
+
 ### Search for a Movie
 
 ```bash
@@ -146,6 +154,14 @@ Then run:
 
 ```bash
 popcorn-archives import movies.csv
+```
+
+### Export to CSV
+
+Save your entire archive to a CSV file. This is useful for creating backups or sharing your list with others. The output file will be compatible with the `import` command.
+
+```bash
+popcorn-archives export my_movies_backup.csv
 ```
 
 ### Delete a Movie
