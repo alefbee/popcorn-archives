@@ -113,6 +113,7 @@ Here are the available commands:
 | `stats` | Displays archive statistics. | `popcorn-archives stats` |
 | `delete` | Deletes a specific movie. | `popcorn-archives delete "The Matrix 1999"` |
 | `clear` | Clears the entire movie archive. | `popcorn-archives clear` |
+| `where` | Displays the location of the database. | `popcorn-archives where` |
 
 ## Uninstalling
 

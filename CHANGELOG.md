@@ -5,7 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-08-14
+## [1.0.1] - 2025-08-14
+
+### Added
+- A new `where` utility command to display the exact location of the application's database file, which helps with debugging and manual access.
+
+## [1.0.0] - 2025-08-13
 
 This marks the first stable, public release of Popcorn Archives. The project is now considered feature-complete, stable, and ready for general use.
 

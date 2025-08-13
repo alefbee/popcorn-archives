@@ -252,6 +252,13 @@ def clear():
         database.clear_all_movies()
         click.echo(click.style("The movie archive has been successfully cleared.", fg='green'))
 
+@cli.command()
+def where():
+    """Displays the full path to the application's database file."""
+    # We import DB_FILE directly from the database module to ensure we get the correct path
+    from .database import DB_FILE
+    click.echo("The database file is located at:")
+    click.echo(click.style(DB_FILE, fg='green'))
 
 if __name__ == '__main__':
     cli()
