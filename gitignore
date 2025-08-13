@@ -1,0 +1,17 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Database file (user-specific data)
+data/movies.db
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env
