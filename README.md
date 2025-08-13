@@ -25,7 +25,6 @@ If you just want to use the application, the best way is to install it with `pip
 If you don't have `pipx`, install it using your system's package manager. For example:
 -   **On Debian/Ubuntu:** `sudo apt install pipx`
 -   **On Fedora/CentOS:** `sudo dnf install python3-pipx`
--   **On openSUSE:** `sudo zypper install python3-pipx`
 -   **On macOS:** `brew install pipx`
 
 After installing, ensure its path is configured by running:

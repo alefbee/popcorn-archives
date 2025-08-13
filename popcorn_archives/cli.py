@@ -1,6 +1,5 @@
-# popcorn_archives/cli.py
-
 import click
+from tqdm import tqdm 
 from . import database
 from . import core
 
@@ -36,38 +35,85 @@ def scan(path):
     """Scans a directory for movie folders to add."""
     movies_to_add = core.scan_movie_folders(path)
     if not movies_to_add:
-        click.echo("No valid movie folders found in this directory.")
+        click.echo("No movies with a valid format were found in this directory.")
         return
 
-    click.echo("The following movies were found:")
-    for title, year in movies_to_add:
-        click.echo(f"- {title} ({year})")
-    
-    if click.confirm("Do you want to add these movies to the archive?"):
-        count = 0
-        for title, year in movies_to_add:
+    click.echo(f"{len(movies_to_add)} valid movies found:")
+    # For readability, only show the first 5 movies
+    for title, year in movies_to_add[:5]:
+        click.echo(f"  - {title} ({year})")
+    if len(movies_to_add) > 5:
+        click.echo("  ...")
+
+    if click.confirm("\nDo you want to add these movies to the archive?"):
+        added_count = 0
+        skipped_count = 0
+        for title, year in tqdm(movies_to_add, desc="Adding to database"):
             if database.add_movie(title, year):
-                count += 1
-        click.echo(click.style(f"{count} new movies added successfully.", fg='green'))
+                added_count += 1
+            else:
+                skipped_count += 1
+        
+        click.echo(click.style("\nOperation complete:", bold=True))
+        click.echo(click.style(f"  {added_count} new movies added successfully.", fg='green'))
+        if skipped_count > 0:
+            click.echo(click.style(f"  {skipped_count} movies were already in the archive.", fg='yellow'))
+    else:
+        click.echo(click.style("Operation cancelled. No movies were added to the archive.", fg='red'))
+
 
 @cli.command(name='import')
 @click.argument('filepath', type=click.Path(exists=True, dir_okay=False))
 def import_csv(filepath):
     """Imports movies from a CSV file."""
     movies_to_add = core.read_csv_file(filepath)
-    if movies_to_add is None:
-        click.echo(click.style(f"Error: File not found at '{filepath}'.", fg='red'))
-        return
-        
     if not movies_to_add:
         click.echo("No movies found to import in the CSV file.")
         return
 
-    count = 0
-    for title, year in movies_to_add:
-        if database.add_movie(title, year):
-            count += 1
-    click.echo(click.style(f"{count} new movies imported successfully from the CSV file.", fg='green'))
+    click.echo(f"Found {len(movies_to_add)} movies in the CSV file.")
+    if click.confirm("Do you want to add these movies to the archive?"):
+        count = 0
+        # Add a progress bar to the loop
+        for title, year in tqdm(movies_to_add, desc="Importing CSV"):
+            if database.add_movie(title, year):
+                count += 1
+        click.echo(click.style(f"{count} new movies imported successfully from the CSV file.", fg='green'))
+
+
+@cli.command()
+@click.argument('name')
+def delete(name):
+    """
+    Deletes a specific movie from the archive.
+    Movie format: "Title YYYY" or "Title (YYYY)"
+    """
+    title, year = core.parse_movie_title(name)
+    if not title or not year:
+        click.echo(click.style(f"Error: Invalid movie format for '{name}'.", fg='red'))
+        return
+
+    # Get confirmation from the user
+    prompt_message = f"Are you sure you want to delete '{title} ({year})'?"
+    if click.confirm(prompt_message):
+        if database.delete_movie(title, year):
+            click.echo(click.style(f"Movie '{title} ({year})' was successfully deleted.", fg='green'))
+        else:
+            click.echo(click.style(f"Movie '{title} ({year})' not found in the archive.", fg='yellow'))
+
+
+@cli.command()
+def clear():
+    """
+    !!! Deletes ALL movies from the archive !!!
+    """
+    # Get serious confirmation from the user
+    warning = "Warning: This operation will permanently delete ALL movies from your archive."
+    click.echo(click.style(warning, fg='red', bold=True))
+    
+    if click.confirm("Are you absolutely sure you want to do this?"):
+        database.clear_all_movies()
+        click.echo(click.style("The movie archive has been successfully cleared.", fg='green'))
 
 
 @cli.command()

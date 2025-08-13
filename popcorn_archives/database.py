@@ -1,24 +1,24 @@
 import sqlite3
 import os
-import click 
+import click
 
-# مسیر استاندارد برای ذخیره داده‌های اپلیکیشن را پیدا می‌کنیم
-# این مسیر در لینوکس معمولا ~/.local/share/popcorn_archives است
+# Find the standard directory for application data.
+# On Linux, this is typically ~/.local/share/PopcornArchives
 APP_NAME = "PopcornArchives"
 APP_DIR = click.get_app_dir(APP_NAME)
 DB_FILE = os.path.join(APP_DIR, 'movies.db')
 
-
 def get_db_connection():
-    """یک اتصال جدید به دیتابیس برقرار می‌کند."""
-    # اگر پوشه برنامه وجود ندارد، آن را می‌سازیم
+    """Establishes a new connection to the database."""
+    # Ensure the application directory exists before connecting.
     os.makedirs(APP_DIR, exist_ok=True)
     conn = sqlite3.connect(DB_FILE, timeout=10)
+    # Allows accessing columns by name.
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
-    """جدول فیلم‌ها را در صورت عدم وجود ایجاد می‌کند."""
+    """Initializes the database and creates the movies table if it doesn't exist."""
     with get_db_connection() as conn:
         conn.execute('''
             CREATE TABLE IF NOT EXISTS movies (
@@ -30,10 +30,8 @@ def init_db():
         ''')
         conn.commit()
 
-# ... بقیه توابع (add_movie, search_movie و غیره) بدون هیچ تغییری باقی می‌مانند ...
-
 def add_movie(title, year):
-    """یک فیلم جدید به دیتابیس اضافه می‌کند."""
+    """Adds a new movie to the database."""
     sql = "INSERT INTO movies (title, year) VALUES (?, ?)"
     try:
         with get_db_connection() as conn:
@@ -41,33 +39,51 @@ def add_movie(title, year):
             conn.commit()
             return True
     except sqlite3.IntegrityError:
+        # This error occurs if the movie (title, year) already exists.
         return False
     except sqlite3.OperationalError as e:
-        print(f"Database error: {e}")
+        # Handle other potential DB errors, like "database is locked".
+        click.echo(f"Database error: {e}", err=True)
         return False
 
 def search_movie(query):
-    """فیلم‌ها را بر اساس عنوان جستجو می‌کند."""
+    """Searches for movies by their title."""
     with get_db_connection() as conn:
         cursor = conn.execute("SELECT title, year FROM movies WHERE title LIKE ?", ('%' + query + '%',))
         return cursor.fetchall()
 
 def get_random_movie():
-    """یک فیلم به صورت تصادفی برمی‌گرداند."""
+    """Returns a single random movie from the database."""
     with get_db_connection() as conn:
         cursor = conn.execute("SELECT title, year FROM movies ORDER BY RANDOM() LIMIT 1")
         return cursor.fetchone()
 
 def get_movies_by_year(year):
-    """تمام فیلم‌های یک سال مشخص را برمی‌گرداند."""
+    """Returns all movies from a specific year."""
     with get_db_connection() as conn:
         cursor = conn.execute("SELECT title, year FROM movies WHERE year = ? ORDER BY title", (year,))
         return cursor.fetchall()
 
 def get_movies_by_decade(decade):
-    """تمام فیلم‌های یک دهه مشخص را برمی‌گرداند."""
+    """Returns all movies from a specific decade."""
     start_year = decade
     end_year = decade + 9
     with get_db_connection() as conn:
         cursor = conn.execute("SELECT title, year FROM movies WHERE year BETWEEN ? AND ? ORDER BY year, title", (start_year, end_year))
-        return cursor.fetchall()
+        return cursor.fetchall()    
+
+def delete_movie(title, year):
+    """Deletes a specific movie by its title and year."""
+    sql = "DELETE FROM movies WHERE title = ? AND year = ?"
+    with get_db_connection() as conn:
+        cursor = conn.execute(sql, (title, year))
+        conn.commit()
+        # Returns True if a row was deleted, False otherwise.
+        return cursor.rowcount > 0
+
+def clear_all_movies():
+    """Deletes all movies from the database."""
+    sql = "DELETE FROM movies"
+    with get_db_connection() as conn:
+        conn.execute(sql)
+        conn.commit()
