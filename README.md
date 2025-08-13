@@ -125,7 +125,8 @@ First, before uninstalling the application, you must find out where it stores yo
 
 Run the following in your terminal:
 ```bash
-popcorn-archives where```
+popcorn-archives where
+```
 
 The output will show you the exact path to the database. For example:
 ```
