@@ -4,11 +4,27 @@ A simple and powerful command-line tool to manage your personal movie watchlist,
 
 ## In Action
 
-A quick look at the `random` and `stats & search` commands:
+A quick look at some of Popcorn Archives' key features in the terminal.
 
-| Scanning a Directory | Viewing Archive Statistics |
-| :------------------: | :------------------------: |
-| ![Screenshot of the random command in action](assets/Screenshot1.png) | ![Screenshot of the stats & search command output](assets/Screenshot2.png) |
+### Stats Dashboard
+Get a quick, beautiful overview of your movie collection.
+
+![Screenshot of the stats command in action](assets/Screenshot01.png)
+
+### Powerful Search
+Instantly find any movie in your archive.
+
+![Screenshot of the search command in action](assets/Screenshot02.png)
+
+### Easy Export
+Export your entire archive to a CSV file for backups or sharing.
+
+![Screenshot of the export command in action](assets/Screenshot03.png)
+
+### Random Suggestion
+Can't decide what to watch? Let Popcorn Archives pick for you!
+
+![Screenshot of the random command in action](assets/Screenshot04.png)
 
 ## Features
 
