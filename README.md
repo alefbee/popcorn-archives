@@ -71,6 +71,22 @@ pip install -e .
 ```
 Now you can run the application using the `popcorn-archives` command from within the activated environment.
 
+## Updating
+
+To update Popcorn Archives to the latest version, navigate to the cloned project directory and run the following commands:
+
+```bash
+# Get the latest changes from GitHub
+git pull origin main
+
+# Re-install the package to apply the updates
+# If you installed with pipx:
+pipx install --force .
+
+# If you installed for development:
+pip install -e .
+```
+
 ## Usage
 
 The application is straightforward to use. Here are the available commands:
@@ -109,10 +125,11 @@ popcorn-archives decade 1940
 
 ### Scan a Directory of Movies
 
-If you have a folder `/path/to/movies` containing subfolders like `The Godfather 1972` and `Pulp Fiction 1994`:
+Automatically finds movies in a directory. It supports two common folder naming formats: `Movie Title YYYY` and `Movie Title (YYYY)`.
 
 ```bash
-popcorn-archives scan /path/to/movies
+# Example: Scanning a folder containing "The Godfather (1972)" and "Pulp Fiction 1994"
+popcorn-archives scan /path/to/your/movies
 ```
 
 ### Import from a CSV File
@@ -129,4 +146,20 @@ Then run:
 
 ```bash
 popcorn-archives import movies.csv
+```
+
+### Delete a Movie
+
+Removes a specific movie from the archive. It will ask for confirmation before deleting.
+
+```bash
+popcorn-archives delete "The Matrix 1999"
+```
+
+### Clear the Entire Archive
+
+Permanently deletes **all** movies from your archive. This command requires double confirmation for safety.
+
+```bash
+popcorn-archives clear
 ```
