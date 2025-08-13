@@ -10,10 +10,8 @@ DB_FILE = os.path.join(APP_DIR, 'movies.db')
 
 def get_db_connection():
     """Establishes a new connection to the database."""
-    # Ensure the application directory exists before connecting.
     os.makedirs(APP_DIR, exist_ok=True)
     conn = sqlite3.connect(DB_FILE, timeout=10)
-    # Allows accessing columns by name.
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -39,10 +37,8 @@ def add_movie(title, year):
             conn.commit()
             return True
     except sqlite3.IntegrityError:
-        # This error occurs if the movie (title, year) already exists.
         return False
     except sqlite3.OperationalError as e:
-        # Handle other potential DB errors, like "database is locked".
         click.echo(f"Database error: {e}", err=True)
         return False
 
@@ -78,7 +74,6 @@ def delete_movie(title, year):
     with get_db_connection() as conn:
         cursor = conn.execute(sql, (title, year))
         conn.commit()
-        # Returns True if a row was deleted, False otherwise.
         return cursor.rowcount > 0
 
 def clear_all_movies():
@@ -92,37 +87,31 @@ def get_total_movies_count():
     """Returns the total number of movies in the database."""
     with get_db_connection() as conn:
         cursor = conn.execute("SELECT COUNT(id) FROM movies")
-        # fetchone() will return a tuple like (143,)
         return cursor.fetchone()[0]
 
 def get_oldest_movie():
     """Returns the oldest movie(s) in the database."""
     with get_db_connection() as conn:
-        # Find the minimum year first
         min_year_cursor = conn.execute("SELECT MIN(year) FROM movies")
         min_year = min_year_cursor.fetchone()[0]
         if min_year is None:
             return []
-        # Find all movies from that year
         cursor = conn.execute("SELECT title, year FROM movies WHERE year = ?", (min_year,))
         return cursor.fetchall()
 
 def get_newest_movie():
     """Returns the newest movie(s) in the database."""
     with get_db_connection() as conn:
-        # Find the maximum year first
         max_year_cursor = conn.execute("SELECT MAX(year) FROM movies")
         max_year = max_year_cursor.fetchone()[0]
         if max_year is None:
             return []
-        # Find all movies from that year
         cursor = conn.execute("SELECT title, year FROM movies WHERE year = ?", (max_year,))
         return cursor.fetchall()
 
 def get_most_frequent_decade():
     """Finds the decade with the most movies."""
     with get_db_connection() as conn:
-        # This query calculates the decade for each year and counts them
         sql = """
             SELECT (year / 10) * 10 AS decade, COUNT(id) as movie_count
             FROM movies
@@ -132,11 +121,33 @@ def get_most_frequent_decade():
         """
         cursor = conn.execute(sql)
         result = cursor.fetchone()
-        # result will be like (1950, 25)
         return result
     
 def get_all_movies():
     """Returns a list of all movies from the database, sorted by year."""
     with get_db_connection() as conn:
         cursor = conn.execute("SELECT title, year FROM movies ORDER BY year, title")
+        return cursor.fetchall()
+
+def get_average_year():
+    """Calculates the average release year of all movies."""
+    with get_db_connection() as conn:
+        cursor = conn.execute("SELECT AVG(year) FROM movies")
+        result = cursor.fetchone()[0]
+        return int(result) if result is not None else None
+
+def get_decade_distribution(limit=5):
+    """
+    Finds the top N decades with the most movies.
+    Returns a list of tuples, e.g., [(1950, 25), (1970, 22), ...].
+    """
+    with get_db_connection() as conn:
+        sql = """
+            SELECT (year / 10) * 10 AS decade, COUNT(id) as movie_count
+            FROM movies
+            GROUP BY decade
+            ORDER BY movie_count DESC, decade DESC
+            LIMIT ?
+        """
+        cursor = conn.execute(sql, (limit,))
         return cursor.fetchall()

@@ -2,9 +2,6 @@
 __pycache__/
 *.pyc
 
-# Database file (user-specific data)
-data/movies.db
-
 # Distribution / packaging
 dist/
 build/

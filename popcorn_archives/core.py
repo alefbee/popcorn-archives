@@ -1,10 +1,8 @@
-# popcorn_archives/core.py
 import os
 import csv
 import re
 from tqdm import tqdm
 
-# ... (parse_movie_title function remains the same) ...
 def parse_movie_title(name):
     """
     Parses the movie title and year from a string.
@@ -12,7 +10,6 @@ def parse_movie_title(name):
     """
     name = name.strip()
 
-    # Attempt to find the "Title (YYYY)" format, allowing extra text at the end.
     match = re.match(r'^(.*) \((\d{4})\)', name)
     if match:
         title = match.group(1).strip()
@@ -20,7 +17,6 @@ def parse_movie_title(name):
         if 1800 < year < 2100:
             return title, year
 
-    # If the above format is not found, attempt the "Title YYYY" format.
     try:
         parts = name.split(' ')
         if len(parts) > 1:
@@ -59,7 +55,6 @@ def scan_movie_folders(path):
             
     return valid_movies, invalid_folders
 
-# ... (read_csv_file function remains the same) ...
 def read_csv_file(filepath):
     """Reads a CSV file and returns a list of movies."""
     movie_list = []

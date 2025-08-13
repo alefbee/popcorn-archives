@@ -1,17 +1,24 @@
-### README.md
 # Popcorn Archives 🍿
 
-A simple and powerful command-line tool to manage your movie watchlist. Never forget a movie you wanted to watch again!
+A simple and powerful command-line tool to manage your personal movie watchlist, built with Python and Click.
+
+## In Action
+
+A quick look at the `random` and `stats & search` commands:
+
+| Scanning a Directory | Viewing Archive Statistics |
+| :------------------: | :------------------------: |
+| ![Screenshot of the random command in action](assets/Screenshot1.png) | ![Screenshot of the stats & search command output](assets/Screenshot2.png) |
 
 ## Features
 
--   **Add Movies**: Manually add movies to your personal database.
--   **Bulk Import**: Import movies from a CSV file.
--   **Scan Directories**: Automatically detect and add movies by scanning your movie folders.
--   **Search**: Quickly check if a movie is already in your archive.
--   **Random Suggestion**: Get a random movie suggestion for movie night.
--   **Filter by Year/Decade**: List all movies from a specific year or decade.
--   **Persistent Storage**: Uses a local SQLite database to store your list.
+-   ✅ **Flexible Movie Detection**: Intelligently scans your movie directories using two common naming formats: `Movie Title YYYY` and `Movie Title (YYYY)`.
+-   ✨ **Robust Error Handling**: Gracefully skips folders it cannot parse and provides a clear warning list, instead of crashing.
+-   📥 **Bulk Import & Export**: Easily import your existing collection from a CSV file, or export your entire archive for backup and sharing.
+-   📊 **Archive Statistics**: Use the `stats` command for a quick overview, including total movie count, oldest/newest movies, and the most populated decade.
+-   🔎 **Powerful Search & Filtering**: Instantly search for any movie in your archive, or filter your collection by a specific year or decade.
+-   🗑️ **Full Data Management**: Add, delete individual movies, or clear the entire archive with interactive, safety-first confirmation prompts.
+-   ⚙️ **Persistent & Safe Storage**: Uses a local SQLite database stored in a standard user data directory, ensuring your archive is safe even if you move or delete the project folder.
 
 ## Installation
 
@@ -19,34 +26,25 @@ There are two ways to install Popcorn Archives, depending on your goal.
 
 ### Option 1: As a System-Wide Command (Recommended for Users)
 
-If you just want to use the application, the best way is to install it with `pipx`. This installs the tool in an isolated environment but makes the command available everywhere in your system, without needing to activate a virtual environment.
+If you just want to use the application, the best way is to install it with `pipx`. This installs the tool in an isolated environment but makes the command available everywhere in your system.
 
 **1. Install pipx**
-If you don't have `pipx`, install it using your system's package manager. For example:
--   **On Debian/Ubuntu:** `sudo apt install pipx`
--   **On Fedora/CentOS:** `sudo dnf install python3-pipx`
--   **On macOS:** `brew install pipx`
-
-After installing, ensure its path is configured by running:
+If you don't have `pipx`, install it using your system's package manager (e.g., `sudo apt install pipx`, `brew install pipx`). Then, ensure its path is configured:
 ```bash
 pipx ensurepath
 ```
-*(You may need to restart your terminal for the changes to take effect.)*
 
 **2. Install Popcorn Archives**
 Clone the repository and install directly from the local path using `pipx`:
-
 ```bash
 git clone https://github.com/alefbee/popcorn-archives.git
 cd popcorn-archives
-pipx install .
-```
-
+pipx install .```
 The `popcorn-archives` command is now ready to use from any terminal!
 
 ### Option 2: For Development
 
-If you want to modify or contribute to the code, you should set it up in a local virtual environment.
+If you want to modify or contribute to the code, set it up in a local virtual environment.
 
 **1. Clone the Repository**
 ```bash
@@ -56,126 +54,97 @@ cd popcorn-archives
 
 **2. Create and Activate a Virtual Environment**
 ```bash
-# Create a virtual environment named .venv
 python3 -m venv .venv
-
-# Activate it (on Linux/macOS)
 source .venv/bin/activate
 ```
-> **Note for Windows users:** Use `.venv\Scripts\Activate` in PowerShell.
 
 **3. Install in Editable Mode**
-This installs the project and its dependencies. The `-e` flag allows your code changes to be reflected immediately without reinstalling.
+This installs the project and its dependencies, allowing your code changes to be reflected immediately.
 ```bash
 pip install -e .
 ```
-Now you can run the application using the `popcorn-archives` command from within the activated environment.
 
 ## Updating
 
-To update Popcorn Archives to the latest version, navigate to the cloned project directory and run the following commands:
+To update Popcorn Archives to the latest version, navigate to the project directory and run:
 
 ```bash
 # Get the latest changes from GitHub
 git pull origin main
 
-# Re-install the package to apply the updates
-# If you installed with pipx:
+# Re-install to apply updates
+# If using pipx:
 pipx install --force .
 
-# If you installed for development:
+# If using a virtual environment:
 pip install -e .
 ```
 
 ## Usage
 
-The application is straightforward to use. Here are the available commands:
+Here are the available commands:
 
-### Add a Movie
+| Command | Description | Example |
+| :--- | :--- | :--- |
+| `add` | Adds a new movie to the archive. | `popcorn-archives add "The Kid 1921"` |
+| `scan` | Scans a directory for movie folders. | `popcorn-archives scan /path/to/movies` |
+| `import` | Imports movies from a CSV file. | `popcorn-archives import movies.csv` |
+| `export` | Exports the entire archive to a CSV. | `popcorn-archives export backup.csv` |
+| `search` | Searches for a movie by title. | `popcorn-archives search "Casablanca"` |
+| `random` | Suggests a random movie. | `popcorn-archives random` |
+| `year` | Lists movies from a specific year. | `popcorn-archives year 1942` |
+| `decade` | Lists movies from a specific decade. | `popcorn-archives decade 1940` |
+| `stats` | Displays archive statistics. | `popcorn-archives stats` |
+| `delete` | Deletes a specific movie. | `popcorn-archives delete "The Matrix 1999"` |
+| `clear` | Clears the entire movie archive. | `popcorn-archives clear` |
 
-The movie name must be in `"Title YYYY"` format.
+## Uninstalling
 
-```bash
-popcorn-archives add "Casablanca 1942"
-```
+If you wish to completely remove Popcorn Archives and all its data from your system, follow these two steps.
 
-### View Archive Statistics
+**Step 1: Uninstall the Application**
 
-Get a quick overview of your movie collection, including total counts and other interesting facts.
+This removes the command-line tool itself.
 
-```bash
-popcorn-archives stats
-```
+-   **If you installed with `pipx`:**
+    ```bash
+    pipx uninstall popcorn-archives
+    ```
+-   **If you installed for development (with `pip`):**
+    Simply delete the project folder. If you created a virtual environment inside it, that will be removed as well.
 
-### Search for a Movie
+**Step 2: Remove the User Data and Database**
 
-```bash
-popcorn-archives search "Casablanca"
-```
+This step deletes your movie database (`movies.db`). **This action is irreversible.**
 
-### Get a Random Suggestion
+The application stores its data in a standard user data directory, which varies by operating system. You need to manually delete this folder.
 
-```bash
-popcorn-archives random
-```
+-   **On Linux:** The data is usually stored in the `~/.config` directory. Note that the application name might be converted to lowercase.
+    ```bash
+    # The application name is "PopcornArchives", so the folder is likely "popcornarchives"
+    rm -rf ~/.config/popcornarchives
+    ```
 
-### List Movies by Year
+-   **On macOS:** The data is stored in the `Application Support` folder.
+    ```bash
+    rm -rf ~/Library/Application\ Support/PopcornArchives
+    ```
 
-```bash
-popcorn-archives year 1942
-```
+-   **On Windows:** The data is stored in the `AppData\Roaming` folder. You can paste this path directly into the File Explorer address bar.
+    ```
+    %APPDATA%\PopcornArchives
+    ```
 
-### List Movies by Decade
+> **Tip:** You can use the `popcorn-archives where` command to see the exact path of the database file before you uninstall the application.
 
-```bash
-popcorn-archives decade 1940
-```
+## About This Project
 
-### Scan a Directory of Movies
+This project was developed as a personal learning journey to create a useful, real-world command-line application in Python. It was an opportunity to practice key software development concepts, including:
 
-Automatically finds movies in a directory. It supports two common folder naming formats: `Movie Title YYYY` and `Movie Title (YYYY)`.
+-   Building a robust CLI with `Click`.
+-   Database management with `SQLite`.
+-   Creating an installable package with `setuptools`.
+-   Following best practices for project structure and documentation.
+-   Implementing version control with Git and GitHub.
 
-```bash
-# Example: Scanning a folder containing "The Godfather (1972)" and "Pulp Fiction 1994"
-popcorn-archives scan /path/to/your/movies
-```
-
-### Import from a CSV File
-
-Create a `movies.csv` file with a `name` header:
-
-```csv
-name
-The Shawshank Redemption 1994
-Forrest Gump 1994
-```
-
-Then run:
-
-```bash
-popcorn-archives import movies.csv
-```
-
-### Export to CSV
-
-Save your entire archive to a CSV file. This is useful for creating backups or sharing your list with others. The output file will be compatible with the `import` command.
-
-```bash
-popcorn-archives export my_movies_backup.csv
-```
-
-### Delete a Movie
-
-Removes a specific movie from the archive. It will ask for confirmation before deleting.
-
-```bash
-popcorn-archives delete "The Matrix 1999"
-```
-
-### Clear the Entire Archive
-
-Permanently deletes **all** movies from your archive. This command requires double confirmation for safety.
-
-```bash
-popcorn-archives clear
-```
+This project was built with significant assistance from AI tools like Google's Gemini.

@@ -13,32 +13,53 @@ def cli():
 
 @cli.command()
 def stats():
-    """Displays statistics about the movie archive."""
-    click.echo(click.style("Popcorn Archives Statistics", bold=True, fg='cyan'))
-    click.echo("-" * 30)
-
+    """Displays beautiful and interesting statistics about the movie archive."""
     total_count = database.get_total_movies_count()
     if total_count == 0:
         click.echo("The archive is empty. Add some movies first!")
         return
-
-    click.echo(f"Total Movies: {click.style(str(total_count), fg='green')}")
-
-    oldest_movies = database.get_oldest_movie()
-    if oldest_movies:
-        # We only display the first one if there are multiple
-        title, year = oldest_movies[0]
-        click.echo(f"Oldest Movie: {title} ({year})")
+        
+    click.echo(click.style("\n🎬 Popcorn Archives Dashboard", bold=True, fg='cyan'))
     
-    newest_movies = database.get_newest_movie()
-    if newest_movies:
-        title, year = newest_movies[0]
-        click.echo(f"Newest Movie: {title} ({year})")
+    click.echo(click.style("\nSummary", bold=True))
+    click.echo("-------")
+    click.echo(f"Total Movies: {click.style(str(total_count), fg='green', bold=True)}")
+    
+    oldest = database.get_oldest_movie()
+    newest = database.get_newest_movie()
+    
+    if oldest and newest:
+        time_span = newest[0]['year'] - oldest[0]['year']
+        click.echo(f"Time Span:    Covering {click.style(str(time_span), bold=True)} years of cinema")
+        click.echo(f"Oldest Movie: {oldest[0]['title']} ({oldest[0]['year']})")
+        click.echo(f"Newest Movie: {newest[0]['title']} ({newest[0]['year']})")
+    
+    avg_year = database.get_average_year()
+    if avg_year:
+        click.echo(f"Average Year: ~{avg_year}")
 
-    top_decade_info = database.get_most_frequent_decade()
-    if top_decade_info:
-        decade, count = top_decade_info
-        click.echo(f"Busiest Decade: The {decade}s (with {count} movies)")
+    click.echo(click.style("\nDecade Distribution", bold=True))
+    click.echo("-------------------")
+    
+    decade_dist = database.get_decade_distribution()
+    if decade_dist:
+        max_count = decade_dist[0]['movie_count']
+        BAR_CHAR = "█"
+        MAX_BAR_WIDTH = 40 
+
+        for row in decade_dist:
+            decade = int(row['decade'])
+            count = row['movie_count']
+            
+            bar_length = int((count / max_count) * MAX_BAR_WIDTH) if max_count > 0 else 0
+            bar = BAR_CHAR * bar_length
+            
+            click.echo(f"  {click.style(str(decade)+'s', bold=True)} | {click.style(bar, fg='green')} {count}")
+    else:
+        click.echo("Not enough data for decade distribution.")
+    
+    click.echo("")
+
 
 @cli.command()
 @click.argument('name')
@@ -70,13 +91,11 @@ def scan(path):
     """Scans a directory for movie folders to add."""
     valid_movies, invalid_folders = core.scan_movie_folders(path)
 
-    # First, display warnings for folders that could not be parsed.
     if invalid_folders:
         click.echo(click.style("\nWarning: The following folders could not be parsed and will be skipped:", fg='yellow'))
         for folder in invalid_folders:
             safe_echo(f"  - {folder}")
     
-    # Now, handle the valid movies.
     if not valid_movies:
         click.echo("\nNo movies with a valid format were found.")
         return
@@ -116,7 +135,6 @@ def import_csv(filepath):
     click.echo(f"Found {len(movies_to_add)} movies in the CSV file.")
     if click.confirm("Do you want to add these movies to the archive?"):
         count = 0
-        # Add a progress bar to the loop
         for title, year in tqdm(movies_to_add, desc="Importing CSV"):
             if database.add_movie(title, year):
                 count += 1
@@ -185,7 +203,6 @@ def delete(name):
         click.echo(click.style(f"Error: Invalid movie format for '{name}'.", fg='red'))
         return
 
-    # Get confirmation from the user
     prompt_message = f"Are you sure you want to delete '{title} ({year})'?"
     if click.confirm(prompt_message):
         if database.delete_movie(title, year):
@@ -208,10 +225,8 @@ def export(filepath):
         with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
             
-            # Write the header
             writer.writerow(['name'])
             
-            # Write the movie data
             for title, year in tqdm(all_movies, desc="Exporting"):
                 writer.writerow([f"{title} {year}"])
         
@@ -225,7 +240,6 @@ def clear():
     """
     !!! Deletes ALL movies from the archive !!!
     """
-    # Get serious confirmation from the user
     warning = "Warning: This operation will permanently delete ALL movies from your archive."
     click.echo(click.style(warning, fg='red', bold=True))
     
