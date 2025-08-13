@@ -129,13 +129,6 @@ def get_all_movies():
         cursor = conn.execute("SELECT title, year FROM movies ORDER BY year, title")
         return cursor.fetchall()
 
-def get_average_year():
-    """Calculates the average release year of all movies."""
-    with get_db_connection() as conn:
-        cursor = conn.execute("SELECT AVG(year) FROM movies")
-        result = cursor.fetchone()[0]
-        return int(result) if result is not None else None
-
 def get_decade_distribution(limit=5):
     """
     Finds the top N decades with the most movies.

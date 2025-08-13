@@ -34,10 +34,6 @@ def stats():
         click.echo(f"Oldest Movie: {oldest[0]['title']} ({oldest[0]['year']})")
         click.echo(f"Newest Movie: {newest[0]['title']} ({newest[0]['year']})")
     
-    avg_year = database.get_average_year()
-    if avg_year:
-        click.echo(f"Average Year: ~{avg_year}")
-
     click.echo(click.style("\nDecade Distribution", bold=True))
     click.echo("-------------------")
     
@@ -45,16 +41,25 @@ def stats():
     if decade_dist:
         max_count = decade_dist[0]['movie_count']
         BAR_CHAR = "█"
-        MAX_BAR_WIDTH = 40 
+        MAX_BAR_WIDTH = 40
+        
+        COLORS = ['cyan', 'magenta', 'yellow', 'blue']
 
-        for row in decade_dist:
+        for i, row in enumerate(decade_dist):
             decade = int(row['decade'])
             count = row['movie_count']
             
+            decade_label = f"{decade}s"
+            formatted_label = f"{decade_label: <8}"
+            
+            bar_color = COLORS[i % len(COLORS)]
             bar_length = int((count / max_count) * MAX_BAR_WIDTH) if max_count > 0 else 0
             bar = BAR_CHAR * bar_length
             
-            click.echo(f"  {click.style(str(decade)+'s', bold=True)} | {click.style(bar, fg='green')} {count}")
+            click.echo(
+                f"  {click.style(formatted_label, bold=True)}"
+                f"| {click.style(bar, fg=bar_color)} {count}"
+            )
     else:
         click.echo("Not enough data for decade distribution.")
     
