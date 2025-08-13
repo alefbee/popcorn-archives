@@ -117,11 +117,26 @@ Here are the available commands:
 
 ## Uninstalling
 
-If you wish to completely remove Popcorn Archives and all its data from your system, follow these two steps.
+If you wish to completely remove Popcorn Archives and all its data from your system, please follow these steps carefully in order.
 
-**Step 1: Uninstall the Application**
+**Step 1: Locate the Data Directory (Important!)**
 
-This removes the command-line tool itself.
+First, before uninstalling the application, you must find out where it stores your data. The easiest way to do this is with the built-in `where` command.
+
+Run the following in your terminal:
+```bash
+popcorn-archives where```
+
+The output will show you the exact path to the database. For example:
+```
+The database file is located at:
+/home/alef/.config/popcornarchives/movies.db
+```
+**Copy or take note of the directory path** (e.g., `/home/alef/.config/popcornarchives`). You will need this path in Step 3.
+
+**Step 2: Uninstall the Application**
+
+Now you can remove the command-line tool itself.
 
 -   **If you installed with `pipx`:**
     ```bash
@@ -130,29 +145,20 @@ This removes the command-line tool itself.
 -   **If you installed for development (with `pip`):**
     Simply delete the project folder. If you created a virtual environment inside it, that will be removed as well.
 
-**Step 2: Remove the User Data and Database**
+**Step 3: Remove the User Data and Database**
 
-This step deletes your movie database (`movies.db`). **This action is irreversible.**
+This is the final step and will delete your movie database. **This action is irreversible.**
 
-The application stores its data in a standard user data directory, which varies by operating system. You need to manually delete this folder.
+Using the path you found in **Step 1**, manually delete the application's data directory.
 
--   **On Linux:** The data is usually stored in the `~/.config` directory. Note that the application name might be converted to lowercase.
+-   **On Linux and macOS:**
+    Use the `rm -rf` command with the path you noted. For example, if the path was `/home/alef/.config/popcornarchives`, the command would be:
     ```bash
-    # The application name is "PopcornArchives", so the folder is likely "popcornarchives"
-    rm -rf ~/.config/popcornarchives
+    rm -rf /home/alef/.config/popcornarchives
     ```
 
--   **On macOS:** The data is stored in the `Application Support` folder.
-    ```bash
-    rm -rf ~/Library/Application\ Support/PopcornArchives
-    ```
-
--   **On Windows:** The data is stored in the `AppData\Roaming` folder. You can paste this path directly into the File Explorer address bar.
-    ```
-    %APPDATA%\PopcornArchives
-    ```
-
-> **Tip:** You can use the `popcorn-archives where` command to see the exact path of the database file before you uninstall the application.
+-   **On Windows:**
+    Open File Explorer. Paste the full directory path you found in Step 1 into the address bar and press Enter. Then, delete the contents of that folder.
 
 ## About This Project
 
