@@ -29,26 +29,38 @@ def add(name):
     else:
         click.echo(click.style(f"Movie '{title} ({year})' already exists in the archive.", fg='yellow'))
 
+def safe_echo(text):
+    """A helper function to print text safely, replacing problematic characters."""
+    safe_text = text.encode('utf-8', errors='replace').decode('utf-8')
+    click.echo(safe_text)
+
 @cli.command()
 @click.argument('path', type=click.Path(exists=True, file_okay=False))
 def scan(path):
     """Scans a directory for movie folders to add."""
-    movies_to_add = core.scan_movie_folders(path)
-    if not movies_to_add:
-        click.echo("No movies with a valid format were found in this directory.")
+    valid_movies, invalid_folders = core.scan_movie_folders(path)
+
+    # First, display warnings for folders that could not be parsed.
+    if invalid_folders:
+        click.echo(click.style("\nWarning: The following folders could not be parsed and will be skipped:", fg='yellow'))
+        for folder in invalid_folders:
+            safe_echo(f"  - {folder}")
+    
+    # Now, handle the valid movies.
+    if not valid_movies:
+        click.echo("\nNo movies with a valid format were found.")
         return
 
-    click.echo(f"{len(movies_to_add)} valid movies found:")
-    # For readability, only show the first 5 movies
-    for title, year in movies_to_add[:5]:
-        click.echo(f"  - {title} ({year})")
-    if len(movies_to_add) > 5:
+    click.echo(click.style(f"\nFound {len(valid_movies)} valid movies:", bold=True))
+    for title, year in valid_movies[:5]:
+        safe_echo(f"  - {title} ({year})")
+    if len(valid_movies) > 5:
         click.echo("  ...")
 
     if click.confirm("\nDo you want to add these movies to the archive?"):
         added_count = 0
         skipped_count = 0
-        for title, year in tqdm(movies_to_add, desc="Adding to database"):
+        for title, year in tqdm(valid_movies, desc="Adding to database"):
             if database.add_movie(title, year):
                 added_count += 1
             else:
