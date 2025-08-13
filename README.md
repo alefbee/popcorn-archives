@@ -1,3 +1,4 @@
+### README.md
 # Popcorn Archives 🍿
 
 A simple and powerful command-line tool to manage your movie watchlist. Never forget a movie you wanted to watch again!
@@ -12,62 +13,64 @@ A simple and powerful command-line tool to manage your movie watchlist. Never fo
 -   **Filter by Year/Decade**: List all movies from a specific year or decade.
 -   **Persistent Storage**: Uses a local SQLite database to store your list.
 
-## Installation & Setup
+## Installation
 
-Follow these steps to get Popcorn Archives running on your local machine.
+There are two ways to install Popcorn Archives, depending on your goal.
 
-**Prerequisites:** You need `git` and `python3` installed on your system.
+### Option 1: As a System-Wide Command (Recommended for Users)
 
-**1. Clone the Repository**
+If you just want to use the application, the best way is to install it with `pipx`. This installs the tool in an isolated environment but makes the command available everywhere in your system, without needing to activate a virtual environment.
 
-First, clone the project from GitHub to your local machine:
+**1. Install pipx**
+If you don't have `pipx`, install it using your system's package manager. For example:
+-   **On Debian/Ubuntu:** `sudo apt install pipx`
+-   **On Fedora/CentOS:** `sudo dnf install python3-pipx`
+-   **On openSUSE:** `sudo zypper install python3-pipx`
+-   **On macOS:** `brew install pipx`
+
+After installing, ensure its path is configured by running:
+```bash
+pipx ensurepath
+```
+*(You may need to restart your terminal for the changes to take effect.)*
+
+**2. Install Popcorn Archives**
+Clone the repository and install directly from the local path using `pipx`:
 
 ```bash
 git clone https://github.com/alefbee/popcorn-archives.git
+cd popcorn-archives
+pipx install .
 ```
 
-**2. Navigate to the Project Directory**
+The `popcorn-archives` command is now ready to use from any terminal!
 
+### Option 2: For Development
+
+If you want to modify or contribute to the code, you should set it up in a local virtual environment.
+
+**1. Clone the Repository**
 ```bash
+git clone https://github.com/alefbee/popcorn-archives.git
 cd popcorn-archives
 ```
 
-**3. Create and Activate a Virtual Environment**
-
-It's a best practice to create a virtual environment to keep project dependencies isolated. This prevents conflicts with other projects or system-wide Python packages.
-
+**2. Create and Activate a Virtual Environment**
 ```bash
 # Create a virtual environment named .venv
 python3 -m venv .venv
-```
 
-Now, activate it:
-
-```bash
-# For Linux and macOS
+# Activate it (on Linux/macOS)
 source .venv/bin/activate
 ```
+> **Note for Windows users:** Use `.venv\Scripts\Activate` in PowerShell.
 
-> **Note for Windows users:** Use the following command in Command Prompt or PowerShell:
-> ```powershell
-> .\.venv\Scripts\Activate
-> ```
-
-After activation, you should see `(.venv)` at the beginning of your command prompt.
-
-**4. Install the Project**
-
-With the virtual environment active, install the project in editable mode (`-e`). This command reads the `setup.py` file, installs all required dependencies (like `Click`), and makes the `popcorn-archives` command available.
-
+**3. Install in Editable Mode**
+This installs the project and its dependencies. The `-e` flag allows your code changes to be reflected immediately without reinstalling.
 ```bash
 pip install -e .
 ```
-
-**You're all set!** You can now run the application. To see all available commands, type:
-
-```bash
-popcorn-archives --help
-```
+Now you can run the application using the `popcorn-archives` command from within the activated environment.
 
 ## Usage
 
@@ -115,12 +118,12 @@ popcorn-archives scan /path/to/movies
 
 ### Import from a CSV File
 
-Create a `movies.csv` file with a single column `name`:
+Create a `movies.csv` file with a `name` header:
 
 ```csv
 name
-"The Shawshank Redemption 1994"
-"Forrest Gump 1994"
+The Shawshank Redemption 1994
+Forrest Gump 1994
 ```
 
 Then run:
