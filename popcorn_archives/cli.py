@@ -1,8 +1,10 @@
 import click
 import csv
+import time
 from tqdm import tqdm 
 from . import database
 from . import core
+from . import config as config_manager
 
 @click.group()
 def cli():
@@ -24,6 +26,12 @@ def stats():
     click.echo(click.style("\nSummary", bold=True))
     click.echo("-------")
     click.echo(f"Total Movies: {click.style(str(total_count), fg='green', bold=True)}")
+
+    watched_stats = database.get_watched_stats()
+    if watched_stats and watched_stats[0] is not None:
+        watched_count, unwatched_count = watched_stats
+        click.echo(f"  - Watched:   {watched_count}")
+        click.echo(f"  - Unwatched: {unwatched_count}")
     
     oldest = database.get_oldest_movie()
     newest = database.get_newest_movie()
@@ -158,9 +166,17 @@ def search(query):
         click.echo("No movie found with that query.")
 
 @cli.command()
-def random():
+@click.option('--unwatched', is_flag=True, help="Suggest a random movie you haven't watched yet.")
+def random(unwatched):
     """Suggests a random movie from the archive."""
-    movie = database.get_random_movie()
+    if unwatched:
+        movie = database.get_random_unwatched_movie()
+        if not movie:
+            click.echo("You've watched all the movies in your archive! 🎉")
+            return
+    else:
+        movie = database.get_random_movie()
+
     if movie:
         title, year = movie
         click.echo("Today's random movie suggestion:")
@@ -255,10 +271,187 @@ def clear():
 @cli.command()
 def where():
     """Displays the full path to the application's database file."""
-    # We import DB_FILE directly from the database module to ensure we get the correct path
     from .database import DB_FILE
     click.echo("The database file is located at:")
     click.echo(click.style(DB_FILE, fg='green'))
+
+def _set_watched_status_by_name(name: str, status: bool):
+    """Helper function to set watched status for watch/unwatch commands."""
+    title, year = core.parse_movie_title(name)
+    if not title or not year:
+        click.echo(click.style(f"Error: Invalid movie format for '{name}'.", fg='red'))
+        return
+
+    if database.set_movie_watched_status(title, year, status):
+        action = "watched" if status else "unwatched"
+        click.echo(click.style(f"Movie '{title} ({year})' marked as {action}.", fg='green'))
+    else:
+        click.echo(click.style(f"Movie '{title} ({year})' not found in the archive.", fg='yellow'))
+
+@cli.command()
+@click.argument('name')
+def watch(name):
+    """Marks a movie as 'watched'."""
+    _set_watched_status_by_name(name, status=True)
+
+@cli.command()
+@click.argument('name')
+def unwatch(name):
+    """Marks a movie as 'unwatched'."""
+    _set_watched_status_by_name(name, status=False)
+
+@cli.command()
+@click.option('--key', help="Your TMDb API key to save to the configuration.")
+def config(key):
+    """Configures the application, such as setting the API key."""
+    if key:
+        config_manager.save_api_key(key)
+        click.echo(click.style("API key saved successfully.", fg='green'))
+    else:
+        click.echo("Usage: poparch config --key YOUR_API_KEY")
+        if config_manager.get_api_key():
+            click.echo("An API key is already configured.")
+
+@cli.command()
+@click.argument('name')
+def info(name):
+    """Fetches and displays detailed information about a movie."""
+    title, year = core.parse_movie_title(name)
+    if not title or not year:
+        click.echo(click.style(f"Error: Invalid movie format for '{name}'.", fg='red'))
+        return
+
+    movie = database.get_movie_details(title, year)
+
+    if not movie:
+        click.echo(click.style(f"Movie '{title} ({year})' not found in archive.", fg='yellow'))
+        return
+
+    if not movie['plot']:
+        click.echo("Fetching details from TMDb API...")
+        details = core.fetch_movie_details_from_api(title, year)
+        
+        if details.get("Error"):
+            click.echo(click.style(f"Error: {details['Error']}", fg='red'))
+            return
+        
+        database.update_movie_details(title, year, details)
+        movie = database.get_movie_details(title, year)
+
+    click.echo(click.style(f"\n🎬 {movie['title']} ({movie['year']})", bold=True, fg='cyan'))
+    click.echo("-" * (len(movie['title']) + len(str(movie['year'])) + 5))
+    click.echo(f"  {'Genre:':<12} {movie['genre']}")
+    click.echo(f"  {'Director:':<12} {movie['director']}")
+    click.echo(f"  {'IMDb Rating:':<12} {movie['imdb_rating']}")
+    click.echo(f"\n  Plot: {movie['plot']}")
+
+@cli.command()
+@click.argument('genre_name', required=False)
+def genre(genre_name):
+    """
+    Lists movies by genre. If no genre is provided, it shows an
+    interactive list of available genres to choose from.
+    """
+    
+    if genre_name:
+        results = database.get_movies_by_genre(genre_name)
+        if not results:
+            click.echo(f"No movies found with the genre '{genre_name}'.")
+            return
+    else:
+        available_genres = database.get_all_unique_genres()
+        if not available_genres:
+            click.echo(click.style("No genres found in the database.", fg='yellow'))
+            click.echo("Run 'poparch update' to fetch movie details first.")
+            return
+
+        click.echo(click.style("Please choose a genre from the list:", bold=True))
+        for i, g_name in enumerate(available_genres, 1):
+            click.echo(f"  {i}. {g_name}")
+
+        try:
+            choice_str = click.prompt("\nEnter the number of your choice", type=str)
+            choice_index = int(choice_str) - 1
+
+            if 0 <= choice_index < len(available_genres):
+                selected_genre = available_genres[choice_index]
+                results = database.get_movies_by_genre(selected_genre)
+            else:
+                click.echo(click.style("Invalid choice. Please enter a valid number.", fg='red'))
+                return
+        except (ValueError, IndexError):
+            click.echo(click.style("Invalid input. Please enter a number.", fg='red'))
+            return
+
+    display_genre = genre_name if genre_name else selected_genre
+    click.echo(click.style(f"\nMovies matching genre '{display_genre}':", bold=True))
+    for row in results:
+        safe_echo(f"  - {row['title']} ({row['year']})")
+
+@cli.command()
+@click.option('--force', is_flag=True, help="Force update for all movies, even those with existing details.")
+def update(force):
+    """
+    Fetches details (genre, plot, etc.) for movies from TMDb.
+    By default, it only fetches for movies with missing details.
+    """
+    if not config_manager.get_api_key():
+        click.echo(click.style("Error: API key not configured. Use 'poparch config --key YOUR_KEY' to set it.", fg='red'))
+        return
+
+    if force:
+        movies_to_update = database.get_all_movies()
+        click.echo("Fetching details for all movies in the archive (force update)...")
+    else:
+        movies_to_update = database.get_movies_missing_details()
+        click.echo("Searching for movies with missing details to update...")
+
+    if not movies_to_update:
+        click.echo(click.style("All movies are already up-to-date.", fg='green'))
+        return
+
+    updated_count = 0
+    failed_movies = []
+    
+    try:
+        with tqdm(total=len(movies_to_update), desc="Updating movies") as pbar:
+            for movie in movies_to_update:
+                title, year = movie['title'], movie['year']
+                
+                pbar.set_description(f"Fetching: {title[:30]}")
+                
+                details = core.fetch_movie_details_from_api(title, year)
+                
+                if not details.get("Error"):
+                    database.update_movie_details(title, year, details)
+                    updated_count += 1
+                else:
+                    failed_movies.append((f"{title} ({year})", details['Error']))
+                
+                pbar.update(1)
+                time.sleep(0.1) 
+    except KeyboardInterrupt:
+        click.echo(click.style("\n\nOperation aborted by user.", fg='yellow'))
+    finally:
+        total_processed = pbar.n if 'pbar' in locals() else 0
+        click.echo(click.style(f"\n--- Update Summary ---", bold=True))
+        click.echo(click.style(f"  Processed:    {total_processed}/{len(movies_to_update)}", fg='cyan'))
+        click.echo(click.style(f"  Successfully updated: {updated_count}", fg='green'))
+        
+        if failed_movies:
+            failed_count = len(failed_movies)
+            click.echo(click.style(f"  Failed to update:   {failed_count}", fg='red'))
+            click.echo(click.style("\nFailed items (please check title/year or network connection):", bold=True))
+            for movie_name, error_reason in failed_movies:
+                if "not found" in error_reason:
+                    error_display = "Not found on TMDb"
+                elif "timed out" in error_reason:
+                    error_display = "Network timeout"
+                else:
+                    error_display = "API Error"
+                
+                click.echo(f"  - {movie_name:<40} | Reason: {error_display}")
+
 
 if __name__ == '__main__':
     cli()

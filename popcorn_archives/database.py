@@ -2,8 +2,6 @@ import sqlite3
 import os
 import click
 
-# Find the standard directory for application data.
-# On Linux, this is typically ~/.local/share/PopcornArchives
 APP_NAME = "PopcornArchives"
 APP_DIR = click.get_app_dir(APP_NAME)
 DB_FILE = os.path.join(APP_DIR, 'movies.db')
@@ -16,16 +14,44 @@ def get_db_connection():
     return conn
 
 def init_db():
-    """Initializes the database and creates the movies table if it doesn't exist."""
+    """Initializes and migrates the database schema."""
     with get_db_connection() as conn:
+        # Step 1: Create the table with its full, final schema if it doesn't exist.
         conn.execute('''
             CREATE TABLE IF NOT EXISTS movies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
                 year INTEGER NOT NULL,
+                watched INTEGER NOT NULL DEFAULT 0,
+                genre TEXT,
+                director TEXT,
+                plot TEXT,
+                imdb_rating TEXT,
                 UNIQUE(title, year)
             )
         ''')
+        conn.commit()
+
+        expected_columns = {
+            "watched": "INTEGER NOT NULL DEFAULT 0",
+            "genre": "TEXT",
+            "director": "TEXT",
+            "plot": "TEXT",
+            "imdb_rating": "TEXT"
+        }
+
+        cursor = conn.execute("PRAGMA table_info(movies)")
+        existing_columns = {row['name'] for row in cursor.fetchall()}
+
+
+        for col_name, col_type in expected_columns.items():
+            if col_name not in existing_columns:
+                click.echo(f"Database migration: Adding column '{col_name}'...")
+                conn.execute(f'ALTER TABLE movies ADD COLUMN {col_name} {col_type}')
+        
+        if 'watched' not in existing_columns:
+            conn.execute('ALTER TABLE movies ADD COLUMN watched INTEGER NOT NULL DEFAULT 0')
+        
         conn.commit()
 
 def add_movie(title, year):
@@ -144,3 +170,82 @@ def get_decade_distribution(limit=5):
         """
         cursor = conn.execute(sql, (limit,))
         return cursor.fetchall()
+
+def set_movie_watched_status(title, year, watched_status: bool):
+    """Sets the watched status for a specific movie."""
+    status_int = 1 if watched_status else 0
+    sql = "UPDATE movies SET watched = ? WHERE title = ? AND year = ?"
+    with get_db_connection() as conn:
+        cursor = conn.execute(sql, (status_int, title, year))
+        conn.commit()
+        return cursor.rowcount > 0
+
+def get_watched_stats():
+    """Returns the count of watched and unwatched movies."""
+    with get_db_connection() as conn:
+        cursor = conn.execute("SELECT SUM(watched), COUNT(id) - SUM(watched) FROM movies")
+        return cursor.fetchone()
+
+def get_random_unwatched_movie():
+    """Returns a single random unwatched movie."""
+    with get_db_connection() as conn:
+        cursor = conn.execute("SELECT title, year FROM movies WHERE watched = 0 ORDER BY RANDOM() LIMIT 1")
+        return cursor.fetchone()
+    
+def get_movie_details(title, year):
+    """Retrieves all details for a specific movie from the database."""
+    with get_db_connection() as conn:
+        cursor = conn.execute(
+            "SELECT * FROM movies WHERE title = ? AND year = ?",
+            (title, year)
+        )
+        return cursor.fetchone()
+
+def update_movie_details(title, year, details):
+    """Updates a movie record with details fetched from an API."""
+    sql = """
+        UPDATE movies SET
+        genre = ?, director = ?, plot = ?, imdb_rating = ?
+        WHERE title = ? AND year = ?
+    """
+    with get_db_connection() as conn:
+        conn.execute(sql, (
+            details.get('Genre'),
+            details.get('Director'),
+            details.get('Plot'),
+            details.get('imdbRating'),
+            title,
+            year
+        ))
+        conn.commit()
+
+def get_movies_by_genre(genre_query):
+    """Finds all movies that match a specific genre."""
+    with get_db_connection() as conn:
+        cursor = conn.execute(
+            "SELECT title, year, genre FROM movies WHERE genre LIKE ?",
+            (f'%{genre_query}%',)
+        )
+        return cursor.fetchall()
+
+def get_movies_missing_details():
+    """Returns all movies that haven't had their details fetched yet (genre is NULL)."""
+    with get_db_connection() as conn:
+        cursor = conn.execute("SELECT title, year FROM movies WHERE genre IS NULL")
+        return cursor.fetchall()
+    
+def get_all_unique_genres():
+    """
+    Returns a sorted list of all unique genres present in the database.
+    Handles genres stored as comma-separated strings.
+    """
+    with get_db_connection() as conn:
+        cursor = conn.execute("SELECT DISTINCT genre FROM movies WHERE genre IS NOT NULL")
+        
+        all_genres = set()
+        for row in cursor.fetchall():
+            # Split genres like "Action, Adventure, Sci-Fi" into individual items
+            genres = [g.strip() for g in row['genre'].split(',')]
+            all_genres.update(genres)
+            
+        return sorted(list(all_genres))

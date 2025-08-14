@@ -1,6 +1,14 @@
+certifi==2025.8.3
+charset-normalizer==3.4.3
 click==8.2.1
+idna==3.10
 iniconfig==2.1.0
 packaging==25.0
 pluggy==1.6.0
+-e git+https://github.com/alefbee/popcorn-archives.git@03125bb40adf119211b263c78576e0ede5d9341c#egg=popcorn_archives
 Pygments==2.19.2
 pytest==8.4.1
+pytest-mock==3.14.1
+requests==2.32.4
+tqdm==4.67.1
+urllib3==2.5.0

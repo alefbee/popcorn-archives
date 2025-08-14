@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-08-15
+
+### BREAKING CHANGES
+- **Command Renamed**: The main command-line executable has been renamed from `popcorn-archives` to `poparch` for a shorter and more convenient user experience. Users upgrading from v1.x.x will need to update any scripts or aliases that used the old command.
+
+### Added
+- **Movie Details Integration**: Added a new `info` command to fetch and display rich movie details (genre, director, plot, rating) from **The Movie Database (TMDb)**.
+- **Watched Status Tracking**: Added `watch` and `unwatch` commands to manage viewing status. The `random` command now supports an `--unwatched` flag.
+- **Bulk Update**: A new `update` command allows users to fetch details for their entire collection in one go. It provides a progress bar with a dynamic description and a final summary report, even when interrupted.
+- **Interactive Genre Filter**: The `genre` command now presents an interactive menu of available genres for easy filtering if no genre is specified.
+- **API Key Configuration**: A `config` command was added to allow users to securely save their personal TMDb API key.
+
+### Changed
+- **API Interaction**: Switched from `tmdbv3api` library to direct `requests` calls for more robust control over network requests, including a 5-second timeout to prevent the application from hanging.
+- **Stats Dashboard**: The `stats` command now includes a breakdown of watched vs. unwatched movies.
+- **Database Schema**: The database schema has been updated to include new columns for storing movie details (`genre`, `director`, etc.) and watched status. A robust migration path is included for existing users.
+
+### Fixed
+- **Test Suite**: The entire test suite has been updated to mock `requests` directly, ensuring tests are accurate and independent of the old `tmdbv3api` library.
+
 ## [1.1.0] - 2025-08-14
 
 ### Added

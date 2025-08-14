@@ -1,7 +1,9 @@
 import os
 import csv
 import re
+import requests
 from tqdm import tqdm
+from . import config as config_manager
 
 def parse_movie_title(name):
     """
@@ -37,12 +39,8 @@ def scan_movie_folders(path):
     valid_movies = []
     invalid_folders = []
     
-    dirs_to_scan = []
     try:
-        with os.scandir(path) as it:
-            for entry in it:
-                if entry.is_dir():
-                    dirs_to_scan.append(entry.name)
+        dirs_to_scan = [entry.name for entry in os.scandir(path) if entry.is_dir()]
     except OSError:
         return [], []
 
@@ -74,3 +72,46 @@ def read_csv_file(filepath):
     except FileNotFoundError:
         return None
     return movie_list
+
+BASE_URL = "https://api.themoviedb.org/3"
+
+def fetch_movie_details_from_api(title, year):
+    """
+    Fetches detailed movie information directly from the TMDb API using requests.
+    """
+    api_key = config_manager.get_api_key()
+    if not api_key:
+        return {"Error": "API key not configured. Use 'poparch config --key YOUR_KEY' to set it."}
+
+    headers = {"accept": "application/json"}
+    
+    try:
+        search_params = {'api_key': api_key, 'query': title, 'year': year}
+        search_response = requests.get(f"{BASE_URL}/search/movie", params=search_params, headers=headers, timeout=5)
+        search_response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
+        search_data = search_response.json()
+
+        if not search_data.get('results'):
+            return {"Error": f"Movie '{title}' ({year}) not found on TMDb."}
+        
+        movie_id = search_data['results'][0]['id']
+
+        details_params = {'api_key': api_key, 'append_to_response': 'credits'}
+        details_response = requests.get(f"{BASE_URL}/movie/{movie_id}", params=details_params, headers=headers, timeout=5)
+        details_response.raise_for_status()
+        details = details_response.json()
+
+        director = next((p['name'] for p in details.get('credits', {}).get('crew', []) if p.get('job') == 'Director'), "N/A")
+        
+        return {
+            "Genre": ", ".join([g['name'] for g in details.get('genres', [])]),
+            "Director": director,
+            "Plot": details.get('overview', 'N/A'),
+            "imdbRating": f"{details.get('vote_average', 0):.1f}/10"
+        }
+    except requests.exceptions.Timeout:
+        return {"Error": "Request to TMDb API timed out after 5 seconds."}
+    except requests.exceptions.RequestException as e:
+        return {"Error": f"Network/API Error: {e}"}
+    except Exception as e:
+        return {"Error": f"An unexpected error occurred: {e}"}
