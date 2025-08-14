@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-08-14
+
+### Added
+- **Continuous Integration (CI)**: A GitHub Actions workflow has been set up to automatically run tests on every push and pull request to the `main` branch, ensuring code quality and stability across multiple Python versions (3.10, 3.11, 3.12).
+- **Automated Tests**: Introduced a test suite using `pytest` with initial unit tests for the core movie title parsing logic.
+- **Build Status Badge**: A "Build Status" badge has been added to the `README.md` for immediate visual feedback on the health of the project.
+
 ## [1.0.1] - 2025-08-14
 
 ### Added

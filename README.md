@@ -1,30 +1,22 @@
 # Popcorn Archives 🍿
 
+[![Run Python Tests](https://github.com/alefbee/popcorn-archives/actions/workflows/ci.yml/badge.svg)](https://github.com/alefbee/popcorn-archives/actions/workflows/ci.yml)
+
+
 A simple and powerful command-line tool to manage your personal movie watchlist, built with Python and Click.
 
-## In Action
+## In Action: A Typical Workflow
 
-A quick look at some of Popcorn Archives' key features in the terminal.
+Take a tour of a typical user session in this single demonstration. The animation showcases some of the most common commands you'll use with Popcorn Archives.
 
-### Stats Dashboard
-Get a quick, beautiful overview of your movie collection.
+![Popcorn Archives Live Demo](popcorn-archives-demo.apng)
 
-![Screenshot of the stats command in action](assets/Screenshot01.png)
+**In this demo, you can see the following sequence of actions:**
 
-### Powerful Search
-Instantly find any movie in your archive.
-
-![Screenshot of the search command in action](assets/Screenshot02.png)
-
-### Easy Export
-Export your entire archive to a CSV file for backups or sharing.
-
-![Screenshot of the export command in action](assets/Screenshot03.png)
-
-### Random Suggestion
-Can't decide what to watch? Let Popcorn Archives pick for you!
-
-![Screenshot of the random command in action](assets/Screenshot04.png)
+1.  **Viewing the Dashboard:** The session starts by running `popcorn-archives stats` to get a quick, colorful overview of the current movie collection.
+2.  **Scanning a New Folder:** Next, `popcorn-archives scan` is used on a directory. Notice how the app reports unparsable folders as warnings and then adds the valid movies to the archive.
+3.  **Getting a Random Suggestion:** For a movie night recommendation, the `popcorn-archives random` command instantly provides a suggestion from the updated collection.
+4.  **Exporting for Backup:** Finally, the entire archive is safely exported to a CSV file for backup using the `popcorn-archives export` command.
 
 ## Features
 
