@@ -9,7 +9,7 @@ A simple and powerful command-line tool to manage your personal movie watchlist,
 
 Take a tour of a typical user session in this single demonstration. The animation showcases some of the most common commands you'll use with Popcorn Archives.
 
-![Popcorn Archives Live Demo](popcorn-archives-demo.apng)
+![Popcorn Archives Live Demo](assets/popcorn-archives-demo.apng)
 
 **In this demo, you can see the following sequence of actions:**
 
