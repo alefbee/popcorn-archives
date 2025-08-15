@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2025-08-15
+
+### Fixed
+- Fixed a crash (`sqlite3.OperationalError: duplicate column name`) that occurred on the first run of the application after a fresh installation. The database initialization logic is now fully idempotent, ensuring it handles both new installs and schema migrations without errors.
+
 ## [2.0.0] - 2025-08-15
 
 ### BREAKING CHANGES
