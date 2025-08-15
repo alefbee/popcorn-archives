@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] - 2025-08-14
+
+### Added
+- A `--version` option to the main command (`poparch --version`) to quickly display the installed version of the application.
+
+### Changed
+- Improved application startup time by implementing "lazy loading" for heavy modules like `requests`. This results in a much faster response for simple commands like `search` and `stats`.
+
+### Fixed
+- Corrected a minor inaccuracy in the documentation for the `config` command.
+
 ## [2.0.1] - 2025-08-15
 
 ### Fixed

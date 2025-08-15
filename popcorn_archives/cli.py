@@ -1,11 +1,13 @@
 import click
 import csv
 import time
-from tqdm import tqdm 
+from tqdm import tqdm
+from click import version_option
+from importlib.metadata import version
 from . import database
-from . import core
 from . import config as config_manager
 
+@version_option(version=version("popcorn-archives"), prog_name="popcorn-archives")
 @click.group()
 def cli():
     """
@@ -83,6 +85,7 @@ def add(name):
     
     Example: popcorn-archives add "The Kid 1921"
     """
+    from . import core
     title, year = core.parse_movie_title(name)
     if not title or not year:
         click.echo(click.style(f"Error: Invalid movie format '{name}'. Must be 'Title YYYY'.", fg='red'))
@@ -102,6 +105,7 @@ def safe_echo(text):
 @click.argument('path', type=click.Path(exists=True, file_okay=False))
 def scan(path):
     """Scans a directory for movie folders to add."""
+    from . import core
     valid_movies, invalid_folders = core.scan_movie_folders(path)
 
     if invalid_folders:
@@ -140,6 +144,7 @@ def scan(path):
 @click.argument('filepath', type=click.Path(exists=True, dir_okay=False))
 def import_csv(filepath):
     """Imports movies from a CSV file."""
+    from . import core
     movies_to_add = core.read_csv_file(filepath)
     if not movies_to_add:
         click.echo("No movies found to import in the CSV file.")
@@ -219,6 +224,7 @@ def delete(name):
     Deletes a specific movie from the archive.
     Movie format: "Title YYYY" or "Title (YYYY)"
     """
+    from . import core
     title, year = core.parse_movie_title(name)
     if not title or not year:
         click.echo(click.style(f"Error: Invalid movie format for '{name}'.", fg='red'))
@@ -271,12 +277,14 @@ def clear():
 @cli.command()
 def where():
     """Displays the full path to the application's database file."""
+    from . import core
     from .database import DB_FILE
     click.echo("The database file is located at:")
     click.echo(click.style(DB_FILE, fg='green'))
 
 def _set_watched_status_by_name(name: str, status: bool):
     """Helper function to set watched status for watch/unwatch commands."""
+    from . import core
     title, year = core.parse_movie_title(name)
     if not title or not year:
         click.echo(click.style(f"Error: Invalid movie format for '{name}'.", fg='red'))
@@ -315,6 +323,7 @@ def config(key):
 @cli.command()
 @click.argument('name')
 def info(name):
+    from . import core
     """Fetches and displays detailed information about a movie."""
     title, year = core.parse_movie_title(name)
     if not title or not year:
@@ -395,6 +404,7 @@ def update(force):
     Fetches details (genre, plot, etc.) for movies from TMDb.
     By default, it only fetches for movies with missing details.
     """
+    from . import core
     if not config_manager.get_api_key():
         click.echo(click.style("Error: API key not configured. Use 'poparch config --key YOUR_KEY' to set it.", fg='red'))
         return
