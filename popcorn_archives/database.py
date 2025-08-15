@@ -14,23 +14,23 @@ def get_db_connection():
     return conn
 
 def init_db():
-    """Initializes and migrates the database schema."""
+    """
+    Initializes and migrates the database schema. This function is safe to run
+    multiple times and handles both new and old database versions.
+    """
     with get_db_connection() as conn:
-        # Step 1: Create the table with its full, final schema if it doesn't exist.
         conn.execute('''
             CREATE TABLE IF NOT EXISTS movies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
                 year INTEGER NOT NULL,
-                watched INTEGER NOT NULL DEFAULT 0,
-                genre TEXT,
-                director TEXT,
-                plot TEXT,
-                imdb_rating TEXT,
                 UNIQUE(title, year)
             )
         ''')
-        conn.commit()
+
+
+        cursor = conn.execute("PRAGMA table_info(movies)")
+        existing_columns = {row['name'] for row in cursor.fetchall()}
 
         expected_columns = {
             "watched": "INTEGER NOT NULL DEFAULT 0",
@@ -40,17 +40,10 @@ def init_db():
             "imdb_rating": "TEXT"
         }
 
-        cursor = conn.execute("PRAGMA table_info(movies)")
-        existing_columns = {row['name'] for row in cursor.fetchall()}
-
-
         for col_name, col_type in expected_columns.items():
             if col_name not in existing_columns:
                 click.echo(f"Database migration: Adding column '{col_name}'...")
                 conn.execute(f'ALTER TABLE movies ADD COLUMN {col_name} {col_type}')
-        
-        if 'watched' not in existing_columns:
-            conn.execute('ALTER TABLE movies ADD COLUMN watched INTEGER NOT NULL DEFAULT 0')
         
         conn.commit()
 
