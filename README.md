@@ -8,17 +8,17 @@ A simple and powerful command-line tool to manage your personal movie watchlist,
 
 ## In Action: A Typical Workflow
 
-Take a tour of a typical user session in this single demonstration. The animation showcases some of the most common commands you'll use with `poparch`.
+Take a tour of a typical user session in this single demonstration. The animation showcases how several key commands work together to manage and explore your movie collection.
 
-![Popcorn Archives Live Demo](assets/popcorn-archives-demo.apng)
+![Popcorn Archives Live Demo](assets/popcorn-archives2-demo.apng)
 
 **In this demo, you can see the following sequence of actions:**
 
-1.  **Viewing the Dashboard:** The session starts by running `poparch stats`.
-2.  **Updating the Archive:** Next, `poparch update` is used to fetch details for all movies missing them.
-3.  **Getting Movie Details:** `poparch info` fetches rich details for a specific movie from TMDb.
-4.  **Filtering by Genre:** The user then lists all "Action" movies with the interactive `poparch genre` command.
-
+1.  **Populating the Archive (`scan` & `add`):** The session begins by using `poparch scan` to quickly import an entire directory of movie folders. A single movie is then added manually with `poparch add`.
+2.  **Checking the Dashboard (`stats`):** Immediately after, the user runs `poparch stats` to see a beautiful, colorful dashboard summarizing the newly populated archive.
+3.  **Enriching the Data (`update`):** With the movies added, the `poparch update` command is run. It automatically finds all movies with missing details and fetches their genre, plot, and rating information from the OMDb API.
+4.  **Viewing Movie Details (`info`):** To see the newly fetched data, the user runs `poparch info` on a specific movie, displaying its detailed information card.
+5.  **Getting a Recommendation (`random --unwatched`):** Finally, looking for a movie to watch, the user runs `poparch random --unwatched` to get a suggestion for a great film they haven't seen yet.
 ## Features
 
 -   🌐 **Rich Movie Details**: Fetch detailed movie information—including genre, director, plot, and ratings—from **The Movie Database (TMDb)**.
