@@ -233,14 +233,13 @@ def update_movie_details(title, year, details):
     """
     with get_db_connection() as conn:
         conn.execute(sql, (
-            details.get('Genre'),
-            details.get('Director'),
-            details.get('Plot'),
+            details.get('genre'),
+            details.get('director'),
+            details.get('plot'),       
             details.get('tmdb_score'),
             details.get('imdb_id'),
             details.get('runtime'),
             details.get('cast'),
-            details.get('keywords'),
             details.get('collection'),
             title,
             year
@@ -257,9 +256,13 @@ def get_movies_by_genre(genre_query):
         return cursor.fetchall()
 
 def get_movies_missing_details():
-    """Returns all movies that haven't had their details fetched yet (genre is NULL)."""
+    """
+    Returns all movies that are missing key details.
+    We use 'runtime' as a reliable indicator that full details have been fetched.
+    """
     with get_db_connection() as conn:
-        cursor = conn.execute("SELECT title, year FROM movies WHERE genre IS NULL")
+        # A movie is considered incomplete if its 'runtime' is NULL.
+        cursor = conn.execute("SELECT title, year FROM movies WHERE runtime IS NULL")
         return cursor.fetchall()
     
 def get_all_unique_genres():
