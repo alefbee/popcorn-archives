@@ -258,12 +258,20 @@ def get_movies_by_genre(genre_query):
 
 def get_movies_missing_details():
     """
-    Returns all movies that are missing key details.
-    We use 'runtime' as a reliable indicator that full details have been fetched.
+    Returns all movies that are missing one or more key details.
+    This also handles cases where a default 'N/A' value was stored.
     """
     with get_db_connection() as conn:
-        # A movie is considered incomplete if its 'runtime' is NULL.
-        cursor = conn.execute("SELECT title, year FROM movies WHERE runtime IS NULL")
+        # A movie is considered incomplete if ANY of these key fields are NULL
+        # OR if they contain our default placeholder 'N/A'.
+        sql = """
+            SELECT title, year FROM movies WHERE
+            runtime IS NULL OR
+            genre IS NULL OR genre = 'N/A' OR
+            director IS NULL OR director = 'N/A' OR
+            plot IS NULL OR plot = 'N/A'
+        """
+        cursor = conn.execute(sql)
         return cursor.fetchall()
     
 def get_all_unique_genres():
