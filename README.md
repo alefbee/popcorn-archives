@@ -112,7 +112,7 @@ Here is a summary of the available commands:
 | `delete` | Deletes a specific movie. | `poparch delete "The Matrix 1999"` |
 | `clear` | Clears the entire movie archive. | `poparch clear` |
 | **Information & Details** | | |
-| `info` | Fetches and displays details for a movie. | `poparch info "Pulp Fiction 1994"` |
+| `info` | Smartly finds a movie locally or online. | `poparch info "Pulp Fiction"` |
 | `search` | Searches for a movie by title. | `poparch search "Casablanca"` |
 | `random` | Suggests a random movie. | `poparch random --unwatched` |
 | `year` | Lists movies from a specific year. | `poparch year 1942` |

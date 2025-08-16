@@ -18,7 +18,9 @@ def init_db():
     Initializes and migrates the database schema. This function is safe to run
     multiple times and handles both new and old database versions.
     """
+
     with get_db_connection() as conn:
+        # Create the base table if it doesn't exist
         conn.execute('''
             CREATE TABLE IF NOT EXISTS movies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,18 +30,33 @@ def init_db():
             )
         ''')
 
-
+        # --- Migration Logic ---
         cursor = conn.execute("PRAGMA table_info(movies)")
         existing_columns = {row['name'] for row in cursor.fetchall()}
 
+        # Rename imdb_rating to tmdb_score for legacy users
+        if 'imdb_rating' in existing_columns and 'tmdb_score' not in existing_columns:
+            click.echo("Database migration: Renaming column 'imdb_rating' to 'tmdb_score'...")
+            conn.execute('ALTER TABLE movies RENAME COLUMN imdb_rating TO tmdb_score')
+            # We need to refetch columns after altering the table
+            cursor = conn.execute("PRAGMA table_info(movies)")
+            existing_columns = {row['name'] for row in cursor.fetchall()}
+
+        # Define all columns that should exist in the latest version
         expected_columns = {
             "watched": "INTEGER NOT NULL DEFAULT 0",
             "genre": "TEXT",
             "director": "TEXT",
             "plot": "TEXT",
-            "imdb_rating": "TEXT"
+            "tmdb_score": "TEXT",
+            "imdb_id": "TEXT",
+            "runtime": "INTEGER",
+            "cast": "TEXT",
+            "keywords": "TEXT",
+            "collection": "TEXT"
         }
 
+        # Add any missing columns
         for col_name, col_type in expected_columns.items():
             if col_name not in existing_columns:
                 click.echo(f"Database migration: Adding column '{col_name}'...")
@@ -52,7 +69,7 @@ def add_movie(title, year):
     sql = "INSERT INTO movies (title, year) VALUES (?, ?)"
     try:
         with get_db_connection() as conn:
-            conn.execute(sql, (title, year))
+            conn.execute(sql, (title.title(), year))
             conn.commit()
             return True
     except sqlite3.IntegrityError:
@@ -61,10 +78,22 @@ def add_movie(title, year):
         click.echo(f"Database error: {e}", err=True)
         return False
 
-def search_movie(query):
-    """Searches for movies by their title."""
+def search_movie(query, exact=False):
+    """
+    Searches for movies by title, case-insensitively.
+    If exact is True, it looks for an exact title match.
+    """
     with get_db_connection() as conn:
-        cursor = conn.execute("SELECT title, year FROM movies WHERE title LIKE ?", ('%' + query + '%',))
+        if exact:
+            # This is not used in the new logic but good to keep
+            sql = "SELECT title, year FROM movies WHERE LOWER(title) = LOWER(?)"
+            params = (query,)
+        else:
+            # Use LIKE for partial matches
+            sql = "SELECT title, year FROM movies WHERE title LIKE ? COLLATE NOCASE"
+            params = (f'%{query}%',)
+            
+        cursor = conn.execute(sql, params)
         return cursor.fetchall()
 
 def get_random_movie():
@@ -186,10 +215,10 @@ def get_random_unwatched_movie():
         return cursor.fetchone()
     
 def get_movie_details(title, year):
-    """Retrieves all details for a specific movie from the database."""
+    """Retrieves all details for a specific movie, case-insensitively."""
     with get_db_connection() as conn:
         cursor = conn.execute(
-            "SELECT * FROM movies WHERE title = ? AND year = ?",
+            "SELECT * FROM movies WHERE LOWER(title) = LOWER(?) AND year = ?",
             (title, year)
         )
         return cursor.fetchone()
@@ -198,7 +227,8 @@ def update_movie_details(title, year, details):
     """Updates a movie record with details fetched from an API."""
     sql = """
         UPDATE movies SET
-        genre = ?, director = ?, plot = ?, imdb_rating = ?
+            genre = ?, director = ?, plot = ?, tmdb_score = ?, imdb_id = ?,
+            runtime = ?, "cast" = ?, keywords = ?, collection = ?
         WHERE title = ? AND year = ?
     """
     with get_db_connection() as conn:
@@ -206,7 +236,12 @@ def update_movie_details(title, year, details):
             details.get('Genre'),
             details.get('Director'),
             details.get('Plot'),
-            details.get('imdbRating'),
+            details.get('tmdb_score'),
+            details.get('imdb_id'),
+            details.get('runtime'),
+            details.get('cast'),
+            details.get('keywords'),
+            details.get('collection'),
             title,
             year
         ))

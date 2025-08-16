@@ -66,27 +66,43 @@ def test_fetch_movie_details_success(mocker):
     mocker.patch('popcorn_archives.config.get_api_key', return_value='a_fake_api_key')
 
     mock_response = MagicMock()
-    mock_response.raise_for_status.return_value = None # Do nothing on raise_for_status
+    mock_response.raise_for_status.return_value = None
 
-    search_json = {
-        'results': [{'id': 680}]
-    }
+    search_json = {'results': [{'id': 680}]}
     details_json = {
         'genres': [{'name': 'Crime'}, {'name': 'Drama'}],
         'overview': 'A classic plot.',
-        'vote_average': 8.9,
+        'vote_average': 8.2,
+        'imdb_id': 'tt0110912',
+        'runtime': 154,
+        'belongs_to_collection': {'name': 'Pulp Fiction Collection'},
         'credits': {
-            'crew': [{'job': 'Director', 'name': 'Quentin Tarantino'}]
+            'crew': [{'job': 'Director', 'name': 'Quentin Tarantino'}],
+            'cast': [
+                {'name': 'John Travolta'}, {'name': 'Samuel L. Jackson'},
+                {'name': 'Uma Thurman'}, {'name': 'Harvey Keitel'},
+                {'name': 'Tim Roth'}, {'name': 'Amanda Plummer'},
+                {'name': 'Maria de Medeiros'} # 7 actors
+            ]
+        },
+        'keywords': {
+            'keywords': [{'name': 'hitman'}, {'name': 'nonlinear timeline'}]
         }
     }
     
     mock_response.json.side_effect = [search_json, details_json]
-    
     mocker.patch('requests.get', return_value=mock_response)
     
+    # Execution
     details = core.fetch_movie_details_from_api("Pulp Fiction", 1994)
 
+    # Assertion
     assert "Error" not in details
-    assert details['Director'] == 'Quentin Tarantino'
-    assert "Crime, Drama" in details['Genre']
-    assert "8.9/10" in details['imdbRating']
+    assert details['director'] == 'Quentin Tarantino'
+    assert "Crime, Drama" in details['genre']
+    assert details['tmdb_score'] == "82%"
+    assert details['runtime'] == 154
+    assert details['collection'] == 'Pulp Fiction Collection'
+    assert 'Samuel L. Jackson' in details['cast']
+    assert len(details['cast'].split(', ')) == 7 # Check for 7 actors
+    assert 'nonlinear timeline' in details['keywords']

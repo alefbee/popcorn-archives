@@ -320,39 +320,129 @@ def config(key):
         if config_manager.get_api_key():
             click.echo("An API key is already configured.")
 
-@cli.command()
-@click.argument('name')
-def info(name):
+@cli.command(name='info')
+@click.argument('query')
+def smart_info(query):
+    """
+    Smartly finds a movie and displays its details.
+    Searches your local archive first, then online. Handles ambiguity.
+    """
     from . import core
-    """Fetches and displays detailed information about a movie."""
-    title, year = core.parse_movie_title(name)
-    if not title or not year:
-        click.echo(click.style(f"Error: Invalid movie format for '{name}'.", fg='red'))
-        return
+    import textwrap
 
-    movie = database.get_movie_details(title, year)
-
-    if not movie:
-        click.echo(click.style(f"Movie '{title} ({year})' not found in archive.", fg='yellow'))
-        return
-
-    if not movie['plot']:
-        click.echo("Fetching details from TMDb API...")
+    def _display_and_add_flow(title, year):
+        """Helper to display details and ask to add a movie."""
         details = core.fetch_movie_details_from_api(title, year)
-        
         if details.get("Error"):
-            click.echo(click.style(f"Error: {details['Error']}", fg='red'))
+            click.echo(click.style(f"Error fetching details: {details['Error']}", fg='red'))
             return
-        
-        database.update_movie_details(title, year, details)
-        movie = database.get_movie_details(title, year)
 
+        display_details = {'title': title, 'year': year, **details}
+        display_movie_details(display_details)
+
+        if not details.get('in_archive') and click.confirm("\nDo you want to add this movie to your archive?", default=True):
+            if database.add_movie(title, year):
+                database.update_movie_details(title, year, details)
+                click.echo(click.style(f"Movie '{title} ({year})' added.", fg='green'))
+            else:
+                click.echo(click.style(f"Movie '{title} ({year})' already exists.", fg='yellow'))
+        elif not details.get('in_archive'):
+            click.echo("Movie was not added to the archive.")
+
+        # --- Step 1: Handle if user provides a full name like "Title YYYY" ---
+    title, year = core.parse_movie_title(query)
+    if title and year:
+        movie_row = database.get_movie_details(title, year)
+        if not movie_row:
+            click.echo(f"Movie not found locally. Searching online for '{title} ({year})'...")
+            _display_and_add_flow(title, year)
+        else:
+            # --- FIX: Convert sqlite3.Row to a dict before displaying ---
+            display_movie_details(dict(movie_row))
+        return
+
+    # --- Step 2: Handle partial names (no year provided) ---
+    click.echo(f"Searching local archive for movies matching '{query}'...")
+    local_results = database.search_movie(query)
+
+    if len(local_results) == 1:
+        movie_row = local_results[0]
+        click.echo(f"Found one match: {movie_row['title']} ({movie_row['year']}).")
+        # --- FIX: Convert sqlite3.Row to a dict before displaying ---
+        full_details = database.get_movie_details(movie_row['title'], movie_row['year'])
+        display_movie_details(dict(full_details))
+        return
+    
+    if len(local_results) > 1:
+        click.echo("Found multiple matches in your archive. Please choose one:")
+        for i, movie_row in enumerate(local_results, 1):
+            click.echo(f"  {i}. {movie_row['title']} ({movie_row['year']})")
+        
+        try:
+            choice_str = click.prompt("\nEnter the number of your choice", type=str)
+            choice_idx = int(choice_str) - 1
+            if 0 <= choice_idx < len(local_results):
+                chosen_movie_row = local_results[choice_idx]
+                full_details = database.get_movie_details(chosen_movie_row['title'], chosen_movie_row['year'])
+                # --- FIX: Convert sqlite3.Row to a dict before displaying ---
+                display_movie_details(dict(full_details))
+            else:
+                click.echo(click.style("Invalid choice.", fg='red'))
+        except (ValueError, IndexError):
+            click.echo(click.style("Invalid input.", fg='red'))
+        return
+
+    # --- Step 3: If nothing found locally, search online ---
+    click.echo("No local matches found. Searching online on TMDb...")
+    online_results = core.fetch_movie_details_from_api(query)
+
+    if online_results.get("Error"):
+        click.echo(click.style(online_results["Error"], fg='red'))
+        return
+    
+    if online_results.get("MultipleResults"):
+        click.echo("Found multiple potential matches online. Which one did you mean?")
+        choices = online_results["MultipleResults"]
+        for i, movie in enumerate(choices, 1):
+            click.echo(f"  {i}. {movie['title']} ({movie['year']})")
+
+        try:
+            choice_str = click.prompt("\nEnter the number of your choice", type=str)
+            choice_idx = int(choice_str) - 1
+            if 0 <= choice_idx < len(choices):
+                chosen_movie = choices[choice_idx]
+                _display_and_add_flow(chosen_movie['title'], chosen_movie['year'])
+            else:
+                click.echo(click.style("Invalid choice.", fg='red'))
+        except (ValueError, IndexError):
+            click.echo(click.style("Invalid input.", fg='red'))
+        return
+    
+    # If we get here, it means the API returned a single, unambiguous result.
+    _display_and_add_flow(query, online_results.get('year'))
+
+def display_movie_details(movie):
+    """A helper function to consistently display movie details."""
+    import textwrap
     click.echo(click.style(f"\n🎬 {movie['title']} ({movie['year']})", bold=True, fg='cyan'))
     click.echo("-" * (len(movie['title']) + len(str(movie['year'])) + 5))
-    click.echo(f"  {'Genre:':<12} {movie['genre']}")
-    click.echo(f"  {'Director:':<12} {movie['director']}")
-    click.echo(f"  {'IMDb Rating:':<12} {movie['imdb_rating']}")
-    click.echo(f"\n  Plot: {movie['plot']}")
+
+    runtime_str = f"{movie.get('runtime')} min" if movie.get('runtime') else "N/A"
+    score_str = movie.get('tmdb_score') or "N/A"
+    click.echo(f"  {'TMDb Score:':<15} {score_str:<15} | {'Runtime:':<10} {runtime_str}")
+    click.echo(f"  {'Genre:':<15} {movie.get('genre', 'N/A')}")
+    click.echo(f"  {'Director:':<15} {movie.get('director', 'N/A')}")
+    click.echo(f"  {'Cast:':<15} {movie.get('cast', 'N/A')}")
+    if movie.get('collection'):
+        click.echo(f"  {'Collection:':<15} {movie.get('collection')}")
+    if movie.get('imdb_id'):
+        imdb_link = f"https://www.imdb.com/title/{movie.get('imdb_id')}/"
+        click.echo(f"  {'IMDb Page:':<15} {imdb_link}")
+    if movie.get('plot'):
+        click.echo(click.style("\nPlot:", bold=True))
+        plot_wrapped = '\n'.join(textwrap.wrap(movie['plot'], width=70, initial_indent='  ', subsequent_indent='  '))
+        click.echo(plot_wrapped)
+    click.echo("")
 
 @cli.command()
 @click.argument('genre_name', required=False)

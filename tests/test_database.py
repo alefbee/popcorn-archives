@@ -24,7 +24,12 @@ def db_connection():
             genre TEXT,
             director TEXT,
             plot TEXT,
-            imdb_rating TEXT,
+            tmdb_score TEXT,
+            imdb_id TEXT,
+            runtime INTEGER,
+            "cast" TEXT,
+            keywords TEXT,
+            collection TEXT,
             UNIQUE(title, year)
         )
     ''')

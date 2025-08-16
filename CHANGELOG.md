@@ -5,7 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.2] - 2025-08-14
+## [2.1.0] - 2025-08-16
+
+### Changed
+- **Smart `info` Command**: The `info` command has been completely overhauled to be more powerful and user-friendly.
+    - It now intelligently handles partial movie titles without a year.
+    - It searches the local archive first. If no matches are found, it automatically searches online via the TMDb API.
+    - If multiple potential matches are found (either locally or online), it presents an interactive menu for the user to choose the correct movie.
+    - When a movie is found online, it interactively asks for confirmation before adding it to the local archive.
+
+## [2.0.2] - 2025-08-15
 
 ### Added
 - A `--version` option to the main command (`poparch --version`) to quickly display the installed version of the application.
