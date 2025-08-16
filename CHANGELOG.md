@@ -7,12 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.1.0] - 2025-08-16
 
+### Added
+- **Rich Movie Data**: The application now fetches and stores a much richer set of movie details from TMDb, including:
+    - Runtime
+    - Top-billed cast members
+    - Movie collection/franchise information
+    - A direct link to the IMDb page (`imdb_id`)
+    - *Note: Keywords are also fetched and stored for future use.*
+
 ### Changed
-- **Smart `info` Command**: The `info` command has been completely overhauled to be more powerful and user-friendly.
-    - It now intelligently handles partial movie titles without a year.
-    - It searches the local archive first. If no matches are found, it automatically searches online via the TMDb API.
+- **Smart `info` Command**: The `info` command has been completely overhauled to be more user-friendly and intelligent.
+    - It now handles partial movie titles without a year.
+    - It searches the local archive first. If no matches are found, it automatically searches online.
     - If multiple potential matches are found (either locally or online), it presents an interactive menu for the user to choose the correct movie.
-    - When a movie is found online, it interactively asks for confirmation before adding it to the local archive.
+    - When a movie is found online, it now interactively asks for confirmation before adding it to the local archive.
+- **Database Schema**: The database schema has been significantly updated to support all the new data fields. A migration path is included to automatically and safely update existing users' databases upon first run.
+- **API Core**: The API fetching logic in `core.py` was enhanced to retrieve the new, richer dataset in a single request
 
 ## [2.0.2] - 2025-08-15
 
