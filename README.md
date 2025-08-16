@@ -127,6 +127,37 @@ Here is a summary of the available commands:
 | `update` | Fetches missing details for all movies. | `poparch update` |
 | `where` | Displays the location of the database. | `poparch where` |
 
+## 🚀 Roadmap: Future Features
+
+Popcorn Archives is actively being developed. Here's a look at some of the exciting features planned for future releases. Contributions are welcome!
+
+### Core Enhancements
+-   [ ] **Advanced Search & Filtering**:
+    -   Implement a powerful `search` command that can filter by multiple criteria at once.
+    -   Examples:
+        -   `poparch search --actor "Tom Hanks"`
+        -   `poparch search --director "Christopher Nolan"`
+        -   `poparch search --keyword "time travel"`
+        -   `poparch search --collection "The Matrix Collection"`
+-   [ ] **Full Data Export/Import**:
+    -   Add a `--full` flag to the `export` command to save all movie details (including genre, plot, cast, etc.) to the CSV.
+    -   Make the `import` command smart enough to detect and import these full backups, skipping redundant API calls.
+
+### New Commands & Features
+-   [ ] **Smart Recommendations**:
+    -   Create a new `poparch recommend <'Title YYYY'>` command that uses the TMDb API to suggest similar movies.
+-   [ ] **Personal Ratings & Notes**:
+    -   Add a `poparch rate <'Title YYYY'> <score>` command to allow users to add their personal ratings.
+    -   Implement a `poparch note <'Title YYYY'>` command that opens the system's default text editor for writing personal notes.
+-   [ ] **Playlists / Custom Lists**:
+    -   Introduce a full-featured list management system (`list create`, `list add`, `list show`) to allow users to organize movies into custom collections like "Sci-Fi Classics" or "Oscar Winners".
+
+### UI/UX Improvements
+-   [ ] **Comprehensive Help Command**:
+    -   Create a master `poparch help` command that displays a beautifully formatted guide with examples for all commands and their options.
+-   [ ] **Configuration Improvements**:
+    -   Merge the `where` command into `poparch config --show-path` for a more unified configuration experience.
+
 ## Testing & Quality Assurance
 
 This project includes a comprehensive test suite built with `pytest`. To run the tests locally, set up the development environment, then run:
