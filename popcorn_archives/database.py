@@ -235,11 +235,12 @@ def update_movie_details(title, year, details):
         conn.execute(sql, (
             details.get('genre'),
             details.get('director'),
-            details.get('plot'),       
+            details.get('plot'),
             details.get('tmdb_score'),
             details.get('imdb_id'),
             details.get('runtime'),
             details.get('cast'),
+            details.get('keywords'),
             details.get('collection'),
             title,
             year
