@@ -289,3 +289,39 @@ def get_all_unique_genres():
             all_genres.update(genres)
             
         return sorted(list(all_genres))
+    
+def search_movies_advanced(title=None, director=None, actor=None, keyword=None, collection=None):
+    """
+    Performs an advanced search with multiple optional criteria.
+    All text-based searches are case-insensitive and partial.
+    """
+    with get_db_connection() as conn:
+        base_query = 'SELECT title, year, director, "cast", collection, keywords FROM movies'
+        conditions = []
+        params = []
+
+        if title:
+            conditions.append("title LIKE ? COLLATE NOCASE")
+            params.append(f'%{title}%')
+        if director:
+            conditions.append("director LIKE ? COLLATE NOCASE")
+            params.append(f'%{director}%')
+        if actor:
+            conditions.append('"cast" LIKE ? COLLATE NOCASE')
+            params.append(f'%{actor}%')
+        if keyword:
+            conditions.append("keywords LIKE ? COLLATE NOCASE")
+            params.append(f'%{keyword}%')
+        if collection:
+            conditions.append("collection LIKE ? COLLATE NOCASE")
+            params.append(f'%{collection}%')
+
+        if not conditions:
+            # If no filters are provided, it's better to return an empty list.
+            return []
+
+        # Join the conditions with ' AND '
+        query = f"{base_query} WHERE {' AND '.join(conditions)} ORDER BY year, title"
+
+        cursor = conn.execute(query, tuple(params))
+        return cursor.fetchall()

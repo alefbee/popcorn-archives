@@ -1,4 +1,5 @@
 import click
+import os
 import csv
 import time
 from tqdm import tqdm
@@ -159,16 +160,79 @@ def import_csv(filepath):
         click.echo(click.style(f"{count} new movies imported successfully from the CSV file.", fg='green'))
 
 @cli.command()
-@click.argument('query')
-def search(query):
-    """Searches for a movie in the archive."""
-    results = database.search_movie(query)
-    if results:
-        click.echo("Found results:")
-        for title, year in results:
-            click.echo(f"- {title} ({year})")
-    else:
-        click.echo("No movie found with that query.")
+@click.argument('title_query', required=False)
+@click.option('--actor', help="Filter movies by an actor's name.")
+@click.option('--director', help="Filter movies by a director's name.")
+@click.option('--keyword', help="Filter movies by a specific keyword.")
+@click.option('--collection', help="Filter movies by a collection or franchise.")
+def search(title_query, actor, director, keyword, collection):
+    """
+    Performs an advanced search of your movie archive.
+    You can search by title and/or filter by other criteria.
+    """
+    # Sanitize the main query input
+    if title_query:
+        title_query = title_query.strip()
+
+    # Check if any search criteria were provided
+    if not any([title_query, actor, director, keyword, collection]):
+        click.echo("Please provide a search term or at least one filter.")
+        click.echo("Try 'poparch search --help' for options.")
+        return
+
+    results = database.search_movies_advanced(
+        title=title_query,
+        actor=actor, director=director,
+        keyword=keyword, collection=collection
+    )
+
+    if not results:
+        click.echo(click.style("No movies found matching your criteria.", fg='yellow'))
+        return
+
+    # --- Rich "Info Card" Output Formatting ---
+    
+    # Build a descriptive header
+    header_parts = []
+    if title_query: header_parts.append(f"title containing '{title_query}'")
+    if actor: header_parts.append(f"actor '{actor}'")
+    if director: header_parts.append(f"director '{director}'")
+    if keyword: header_parts.append(f"keyword '{keyword}'")
+    if collection: header_parts.append(f"collection '{collection}'")
+    
+    header = f"🔎 Found {len(results)} movies for " + " and ".join(header_parts)
+    click.echo(click.style("\n" + header, bold=True, fg='cyan'))
+
+    # Get terminal width for the separator, with a default
+    try:
+        # Subtract a few characters for padding
+        terminal_width = os.get_terminal_size().columns - 5
+    except OSError:
+        terminal_width = 75 # Default width
+
+    for i, movie in enumerate(results):
+        # Add a top border for the card, but not for the very first item
+        if i > 0:
+            click.echo("") # Add a blank line for spacing
+        
+        # Main line: Title and Year (aligned)
+        year_str = f"({movie['year']})"
+        click.echo(f"  🎬 {movie['title']:<45} {year_str:>6}")
+
+        # Sub-lines for context-specific info
+        if director and movie['director']:
+            safe_echo(f"     {'Directed by:':<15} {movie['director']}")
+        
+        if actor and movie['cast']:
+            matching_actor = next((a.strip() for a in movie['cast'].split(',') if actor.lower() in a.lower()), actor)
+            safe_echo(f"     {'Featuring:':<15} {matching_actor}")
+        
+        if collection and movie['collection']:
+            safe_echo(f"     {'Part of:':<15} {movie['collection']}")
+        
+        # Bottom border for the card
+        separator = "─" * terminal_width
+        click.echo(click.style(f"  {separator}", fg='bright_black'))
 
 @cli.command()
 @click.option('--unwatched', is_flag=True, help="Suggest a random movie you haven't watched yet.")
@@ -320,6 +384,38 @@ def config(key):
         if config_manager.get_api_key():
             click.echo("An API key is already configured.")
 
+def _display_and_add_flow(title, year):
+    """
+    A consistent helper to fetch details from the API, display them,
+    and then offer to add the movie to the local archive.
+    """
+    # Note: Lazy loading happens inside smart_info, not here.
+    from . import core, database
+    import textwrap
+
+    click.echo(f"Fetching details for '{title} ({year})' from TMDb...")
+    details = core.fetch_movie_details_from_api(title, year)
+
+    if details.get("Error"):
+        click.echo(click.style(f"Error: {details['Error']}", fg='red'))
+        return
+
+    # Check if the movie is already in our archive before displaying
+    is_in_archive = database.get_movie_details(title, year) is not None
+    
+    display_details = {'title': title, 'year': year, **details, 'in_archive': is_in_archive}
+    display_movie_details(display_details)
+
+    if not is_in_archive and click.confirm("\nDo you want to add this movie to your archive?", default=True):
+        if database.add_movie(title, year):
+            database.update_movie_details(title, year, details)
+            click.echo(click.style(f"Movie '{title} ({year})' added to your archive.", fg='green'))
+        else:
+            # This case might happen in a race condition, but good to handle
+            click.echo(click.style(f"Movie '{title} ({year})' already exists in your archive.", fg='yellow'))
+    elif not is_in_archive:
+        click.echo("Movie was not added to the archive.")
+
 @cli.command(name='info')
 @click.argument('query')
 def smart_info(query):
@@ -327,75 +423,58 @@ def smart_info(query):
     Smartly finds a movie and displays its details.
     Searches your local archive first, then online. Handles ambiguity.
     """
-    from . import core
+    from . import core,database
     import textwrap
 
-    def _display_and_add_flow(title, year):
-        """Helper to display details and ask to add a movie."""
-        details = core.fetch_movie_details_from_api(title, year)
-        if details.get("Error"):
-            click.echo(click.style(f"Error fetching details: {details['Error']}", fg='red'))
-            return
-
-        display_details = {'title': title, 'year': year, **details}
-        display_movie_details(display_details)
-
-        if not details.get('in_archive') and click.confirm("\nDo you want to add this movie to your archive?", default=True):
-            if database.add_movie(title, year):
-                database.update_movie_details(title, year, details)
-                click.echo(click.style(f"Movie '{title} ({year})' added.", fg='green'))
-            else:
-                click.echo(click.style(f"Movie '{title} ({year})' already exists.", fg='yellow'))
-        elif not details.get('in_archive'):
-            click.echo("Movie was not added to the archive.")
-
-        # --- Step 1: Handle if user provides a full name like "Title YYYY" ---
+    
     title, year = core.parse_movie_title(query)
+    
+    # Case 1: User provides a full "Title YYYY" query.
     if title and year:
-        movie_row = database.get_movie_details(title, year)
-        if not movie_row:
-            click.echo(f"Movie not found locally. Searching online for '{title} ({year})'...")
-            _display_and_add_flow(title, year)
+        movie = database.get_movie_details(title, year)
+        if movie:
+            display_movie_details(dict(movie))
         else:
-            # --- FIX: Convert sqlite3.Row to a dict before displaying ---
-            display_movie_details(dict(movie_row))
+            click.echo(f"Movie not found locally.")
+            _display_and_add_flow(title, year)
         return
 
-    # --- Step 2: Handle partial names (no year provided) ---
-    click.echo(f"Searching local archive for movies matching '{query}'...")
-    local_results = database.search_movie(query)
+    # Case 2: User provides a partial query (just a title).
+    search_term = query.strip()
+    click.echo(f"Searching local archive for movies matching '{search_term}'...")
+    local_results = database.search_movie(search_term)
 
     if len(local_results) == 1:
-        movie_row = local_results[0]
-        click.echo(f"Found one match: {movie_row['title']} ({movie_row['year']}).")
-        # --- FIX: Convert sqlite3.Row to a dict before displaying ---
-        full_details = database.get_movie_details(movie_row['title'], movie_row['year'])
-        display_movie_details(dict(full_details))
+        movie = local_results[0]
+        click.echo(f"Found one match: {movie['title']} ({movie['year']}).")
+        full_details = database.get_movie_details(movie['title'], movie['year'])
+        if full_details:
+             display_movie_details(dict(full_details))
         return
     
     if len(local_results) > 1:
         click.echo("Found multiple matches in your archive. Please choose one:")
-        for i, movie_row in enumerate(local_results, 1):
-            click.echo(f"  {i}. {movie_row['title']} ({movie_row['year']})")
+        for i, movie in enumerate(local_results, 1):
+            click.echo(f"  {i}. {movie['title']} ({movie['year']})")
         
         try:
             choice_str = click.prompt("\nEnter the number of your choice", type=str)
             choice_idx = int(choice_str) - 1
             if 0 <= choice_idx < len(local_results):
-                chosen_movie_row = local_results[choice_idx]
-                full_details = database.get_movie_details(chosen_movie_row['title'], chosen_movie_row['year'])
-                # --- FIX: Convert sqlite3.Row to a dict before displaying ---
-                display_movie_details(dict(full_details))
+                chosen_movie = local_results[choice_idx]
+                full_details = database.get_movie_details(chosen_movie['title'], chosen_movie['year'])
+                if full_details:
+                    display_movie_details(dict(full_details))
             else:
                 click.echo(click.style("Invalid choice.", fg='red'))
         except (ValueError, IndexError):
-            click.echo(click.style("Invalid input.", fg='red'))
+            click.echo(click.style("Invalid input. Please enter a number.", fg='red'))
         return
 
-    # --- Step 3: If nothing found locally, search online ---
+    # Case 3: Nothing found locally, search online.
     click.echo("No local matches found. Searching online on TMDb...")
-    online_results = core.fetch_movie_details_from_api(query)
-
+    online_results = core.fetch_movie_details_from_api(search_term)
+    
     if online_results.get("Error"):
         click.echo(click.style(online_results["Error"], fg='red'))
         return
@@ -411,15 +490,25 @@ def smart_info(query):
             choice_idx = int(choice_str) - 1
             if 0 <= choice_idx < len(choices):
                 chosen_movie = choices[choice_idx]
-                _display_and_add_flow(chosen_movie['title'], chosen_movie['year'])
+                # We need to parse the year, which might be a string 'N/A'
+                try:
+                    chosen_year = int(chosen_movie['year'])
+                    _display_and_add_flow(chosen_movie['title'], chosen_year)
+                except (ValueError, TypeError):
+                    click.echo(click.style(f"Could not parse year for '{chosen_movie['title']}'. Cannot fetch details.", fg='yellow'))
             else:
                 click.echo(click.style("Invalid choice.", fg='red'))
         except (ValueError, IndexError):
             click.echo(click.style("Invalid input.", fg='red'))
         return
-    
-    # If we get here, it means the API returned a single, unambiguous result.
-    _display_and_add_flow(query, online_results.get('year'))
+
+    # If API returns a single, unambiguous result.
+    final_title = online_results.get('title', search_term)
+    final_year = online_results.get('year')
+    if final_year:
+        _display_and_add_flow(final_title, final_year)
+    else:
+        click.echo(click.style(f"Could not determine a precise year for '{query}'. Please be more specific.", fg='yellow'))
 
 def display_movie_details(movie):
     """A helper function to consistently display movie details."""

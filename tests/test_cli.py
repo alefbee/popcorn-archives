@@ -109,37 +109,29 @@ def test_smart_info_partial_query_multiple_local_matches(mocker):
     assert "A human soldier is sent..." in result.output
 
 def test_smart_info_not_found_locally_fetch_and_add(mocker):
-    """Tests `info Title YYYY` when not found locally, fetches online, and user confirms add."""
-    # This mock covers the "not found locally" case.
     mocker.patch('popcorn_archives.database.get_movie_details', return_value=None)
+    mocker.patch('popcorn_archives.database.search_movie', return_value=[])
     
-    # Mock the API response
-    mock_api_response = {
-        "genre": "Sci-Fi", "director": "Cameron", "plot": "A plot.",
-        "in_archive": False # Simulate that it's not in the archive
-    }
+    mock_api_response = { "genre": "Sci-Fi", "director": "Cameron", "plot": "A plot." }
     mocker.patch('popcorn_archives.core.fetch_movie_details_from_api', return_value=mock_api_response)
     
-    # Mock the database write operations
     mock_add = mocker.patch('popcorn_archives.database.add_movie', return_value=True)
     mock_update = mocker.patch('popcorn_archives.database.update_movie_details')
     
     runner = CliRunner()
-    # Simulate user typing 'y' and pressing Enter to confirm adding the movie
     result = runner.invoke(cli, ['info', 'Avatar 2009'], input='y\n')
 
     assert result.exit_code == 0
-    assert "Searching online for 'Avatar (2009)'" in result.output
+    assert "Fetching details for 'Avatar (2009)' from TMDb..." in result.output
     assert "Cameron" in result.output
-    assert "Do you want to add this movie to your archive?" in result.output
-    assert "Movie 'Avatar (2009)' added." in result.output
+    assert "Movie 'Avatar (2009)' added" in result.output
     mock_add.assert_called_once_with("Avatar", 2009)
     mock_update.assert_called_once()
 
 def test_smart_info_not_found_locally_multiple_online_matches(mocker):
     """Tests `info Title` with no local results, finds multiple online, and user chooses."""
     mocker.patch('popcorn_archives.database.search_movie', return_value=[])
-    
+
     # Mock the first API call (partial search) to return multiple results
     mock_api_multi_response = {
         "MultipleResults": [
@@ -147,7 +139,7 @@ def test_smart_info_not_found_locally_multiple_online_matches(mocker):
             {'title': 'Aliens', 'year': '1986'}
         ]
     }
-    # Mock the second API call (precise search) to return full details for the chosen movie
+    # Mock the second API call (precise search) to return full details
     mock_api_details_response = {"genre": "Horror, Sci-Fi", "director": "James Cameron"}
     
     mocker.patch('popcorn_archives.core.fetch_movie_details_from_api', side_effect=[
@@ -165,7 +157,8 @@ def test_smart_info_not_found_locally_multiple_online_matches(mocker):
     assert "Found multiple potential matches online" in result.output
     assert "2. Aliens (1986)" in result.output
     assert "James Cameron" in result.output
-    assert "Movie 'Aliens (1986)' added." in result.output
+
+    assert "Movie 'Aliens (1986)' added to your archive" in result.output
 
 def test_delete_command(mocker):
     """Tests the 'delete' command."""
@@ -214,3 +207,29 @@ def test_update_command(mocker):
     
     mock_fetch.assert_called_once_with('Movie To Update', 2023)
     mock_db_update.assert_called_once_with('Movie To Update', 2023, mock_api_response)
+
+def test_advanced_search_by_director(mocker):
+    """Tests `search --director` and the rich output format."""
+    mock_results = [
+        {'title': 'Inception', 'year': 2010, 'director': 'Christopher Nolan', 'cast': '...'}
+    ]
+    mocker.patch('popcorn_archives.database.search_movies_advanced', return_value=mock_results)
+    
+    runner = CliRunner()
+    result = runner.invoke(cli, ['search', '--director', 'Nolan'])
+    
+    assert result.exit_code == 0
+    assert "Found 1 movies for director 'Nolan'" in result.output
+    assert "Inception" in result.output
+    assert "Directed by:" in result.output
+    assert "Christopher Nolan" in result.output
+
+def test_advanced_search_no_results(mocker):
+    """Tests `search` when no movies match the criteria."""
+    mocker.patch('popcorn_archives.database.search_movies_advanced', return_value=[])
+    
+    runner = CliRunner()
+    result = runner.invoke(cli, ['search', '--actor', 'Nonexistent Actor'])
+    
+    assert result.exit_code == 0
+    assert "No movies found matching your criteria." in result.output

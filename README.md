@@ -107,24 +107,24 @@ Here is a summary of the available commands:
 | **Management** | | |
 | `add` | Adds a new movie to the archive. | `poparch add "The Kid 1921"` |
 | `scan` | Scans a directory for movie folders. | `poparch scan /path/to/movies` |
-| `import` | Imports movies from a CSV file. | `poparch import movies.csv` |
-| `export` | Exports the entire archive to a CSV. | `poparch export backup.csv` |
-| `delete` | Deletes a specific movie. | `poparch delete "The Matrix 1999"` |
+| `import`| Imports movies from a CSV file. | `poparch import movies.csv` |
+| `export`| Exports the archive to a CSV. | `poparch export backup.csv` |
+| `delete`| Deletes a specific movie. | `poparch delete "The Matrix 1999"` |
 | `clear` | Clears the entire movie archive. | `poparch clear` |
-| **Information & Details** | | |
+| **Information & Search** | | |
 | `info` | Smartly finds a movie locally or online. | `poparch info "Pulp Fiction"` |
-| `search` | Searches for a movie by title. | `poparch search "Casablanca"` |
-| `random` | Suggests a random movie. | `poparch random --unwatched` |
+| `search`| Advanced search with filters. | `poparch search --director "Nolan"` |
+| `random`| Suggests a random movie. | `poparch random --unwatched` |
 | `year` | Lists movies from a specific year. | `poparch year 1942` |
-| `decade` | Lists movies from a specific decade. | `poparch decade 1940` |
-| `genre` | Lists movies by genre (interactive menu). | `poparch genre` |
+| `decade`| Lists movies from a specific decade. | `poparch decade 1940` |
+| `genre` | Lists movies by genre (interactive). | `poparch genre` |
 | `stats` | Displays archive statistics. | `poparch stats` |
 | **Watched Status** | | |
 | `watch` | Marks a movie as watched. | `poparch watch "The Matrix 1999"` |
-| `unwatch` | Marks a movie as unwatched. | `poparch unwatch "The Matrix 1999"` |
+| `unwatch`| Marks a movie as unwatched. | `poparch unwatch "The Matrix 1999"` |
 | **Configuration & Maintenance** | | |
-| `config` | Sets the TMDb API key. | `poparch config --key <your_key>` |
-| `update` | Fetches missing details for all movies. | `poparch update` |
+| `config`| Sets the TMDb API key. | `poparch config --key <your_key>` |
+| `update`| Fetches missing details for all movies. | `poparch update --force` |
 | `where` | Displays the location of the database. | `poparch where` |
 
 ## 🚀 Roadmap: Future Features
@@ -132,7 +132,7 @@ Here is a summary of the available commands:
 Popcorn Archives is actively being developed. Here's a look at some of the exciting features planned for future releases. Contributions are welcome!
 
 ### Core Enhancements
--   [ ] **Advanced Search & Filtering**:
+-   [x] **Advanced Search & Filtering**:
     -   Implement a powerful `search` command that can filter by multiple criteria at once.
     -   Examples:
         -   `poparch search --actor "Tom Hanks"`

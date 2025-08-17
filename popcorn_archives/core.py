@@ -119,7 +119,8 @@ def fetch_movie_details_from_api(title, year=None):
         details = details_response.json()
 
         # Step 3: Process and format all the new data
-        director = next((p['name'] for p in details.get('credits', {}).get('crew', []) if p.get('job') == 'Director'), "N/A")
+        directors = [p['name'] for p in details.get('credits', {}).get('crew', []) if p.get('job') == 'Director']
+        director_str = ", ".join(directors) if directors else "N/A"
         cast = ", ".join([p['name'] for p in details.get('credits', {}).get('cast', [])[:7]])
         keywords = ", ".join([k['name'] for k in details.get('keywords', {}).get('keywords', [])])
         tmdb_score = f"{int(details.get('vote_average', 0) * 10)}%"
@@ -128,7 +129,7 @@ def fetch_movie_details_from_api(title, year=None):
         
         return {
             "genre": ", ".join([g['name'] for g in details.get('genres', [])]),
-            "director": director,
+            "director": director_str,
             "plot": details.get('overview', 'N/A'),
             "tmdb_score": tmdb_score,
             "imdb_id": details.get('imdb_id'),

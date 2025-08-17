@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-08-17
+
+### Added
+- **Advanced Search**: A powerful new `search` command that allows filtering by multiple criteria at once, including `--actor`, `--director`, `--keyword`, and `--collection`.
+- **Rich Search Output**: The `search` command now displays results in a beautiful, easy-to-read "Info Card" format.
+
+### Changed
+- **Smart `info` Command**: The `info` command has been completely overhauled to be more user-friendly and intelligent.
+    - It now handles partial movie titles without a year.
+    - It searches the local archive first. If no matches are found, it automatically searches online.
+    - It presents an interactive menu for ambiguous results (both locally and online).
+    - It interactively asks for confirmation before adding a new movie found online.
+- **Database Schema**: The database schema was updated to store a richer set of movie details, including `runtime`, `cast`, `keywords`, and `collection`.
+- **API Core**: The API fetching logic was enhanced to retrieve the new, richer dataset from TMDb.
+
+### Fixed
+- **Critical Update Bug**: Fixed a bug where the `update` command would not correctly save all fetched data due to a key mismatch.
+- **Robust Update Logic**: The `update` command is now smarter at finding movies with incomplete data, ensuring that legacy records are properly updated.
+- **Search Input**: The `search` command now correctly handles queries with trailing whitespace.
+
 ## [2.1.3] - 2025-08-16
 
 ### Fixed
