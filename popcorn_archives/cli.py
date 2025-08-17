@@ -8,11 +8,16 @@ from importlib.metadata import version
 from . import database
 from . import config as config_manager
 
+@click.group(context_settings=dict(help_option_names=['-h', '--help'], max_content_width=120))
 @version_option(version=version("popcorn-archives"), prog_name="popcorn-archives")
-@click.group()
 def cli():
     """
     Popcorn Archives: A CLI tool for managing your movie watchlist.
+
+    \b
+    Run `poparch <COMMAND> --help` for more information on a specific command.
+    For a full user guide, please visit:
+    https://github.com/alefbee/popcorn-archives/blob/main/USAGE.md
     """
     database.init_db()
 
@@ -161,14 +166,27 @@ def import_csv(filepath):
 
 @cli.command()
 @click.argument('title_query', required=False)
-@click.option('--actor', help="Filter movies by an actor's name.")
-@click.option('--director', help="Filter movies by a director's name.")
-@click.option('--keyword', help="Filter movies by a specific keyword.")
-@click.option('--collection', help="Filter movies by a collection or franchise.")
+@click.option('--actor', help="Filter movies by an actor's name (case-insensitive).")
+@click.option('--director', help="Filter movies by a director's name (case-insensitive).")
+@click.option('--keyword', help="Filter movies by a specific keyword (case-insensitive).")
+@click.option('--collection', help="Filter movies by a collection or franchise (case-insensitive).")
 def search(title_query, actor, director, keyword, collection):
     """
-    Performs an advanced search of your movie archive.
-    You can search by title and/or filter by other criteria.
+    Performs an advanced search of your local movie archive.
+
+    You can search by a partial movie TITLE and/or combine multiple filters
+    for a more precise search.
+
+    \b
+    Examples:
+      - Find all movies with 'Matrix' in the title:
+        $ poparch search "Matrix"
+    \b
+      - Find all movies directed by Christopher Nolan:
+        $ poparch search --director "Nolan"
+    \b
+      - Find all of Tom Hanks' movies with 'Road' in the title:
+        $ poparch search "Road" --actor "Tom Hanks"
     """
     # Sanitize the main query input
     if title_query:
@@ -577,26 +595,50 @@ def genre(genre_name):
         safe_echo(f"  - {row['title']} ({row['year']})")
 
 @cli.command()
-@click.option('--force', is_flag=True, help="Force update for all movies, even those with existing details.")
-def update(force):
+@click.argument('filepath', type=click.Path(exists=True, dir_okay=False), required=False)
+@click.option('--force', is_flag=True, help="Force update for all movies, ignoring the default logic.")
+def update(filepath, force):
     """
-    Fetches details (genre, plot, etc.) for movies from TMDb.
-    By default, it only fetches for movies with missing details.
+    Fetches details for movies from TMDb.
+
+    - By default, it only fetches for movies with missing details.
+    - If a FILEPATH is provided, it only updates movies from that file.
+    - The --force flag updates ALL movies in the archive.
     """
-    from . import core
+    from . import core # Lazy loading
+    
     if not config_manager.get_api_key():
-        click.echo(click.style("Error: API key not configured. Use 'poparch config --key YOUR_KEY' to set it.", fg='red'))
+        click.echo(click.style("Error: API key not configured.", fg='red'))
         return
 
-    if force:
+    # --- NEW: Prioritized Logic ---
+    if filepath:
+        # Priority 1: Update from a file.
+        click.echo(f"Updating movies from list: {filepath}...")
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                movie_name_list = [line.strip() for line in f if line.strip()]
+            
+            movies_to_update = database.get_movies_by_name_list(movie_name_list)
+            
+            if not movies_to_update:
+                click.echo(click.style("No valid movies from the list were found in your archive.", fg='yellow'))
+                return
+        except Exception as e:
+            click.echo(click.style(f"Error reading file: {e}", fg='red'))
+            return
+            
+    elif force:
+        # Priority 2: Force update all movies.
         movies_to_update = database.get_all_movies()
-        click.echo("Fetching details for all movies in the archive (force update)...")
+        click.echo("Fetching details for all movies (force update)...")
     else:
+        # Default: Update movies with missing details.
         movies_to_update = database.get_movies_missing_details()
         click.echo("Searching for movies with missing details to update...")
 
     if not movies_to_update:
-        click.echo(click.style("All movies are already up-to-date.", fg='green'))
+        click.echo(click.style("No movies need updating based on the selected mode.", fg='green'))
         return
 
     updated_count = 0

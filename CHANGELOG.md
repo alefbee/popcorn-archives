@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2025-08-18
+
+### Added
+- **Targeted `update` Command**: The `update` command now accepts an optional `FILEPATH` argument. This allows users to update only a specific list of movies (e.g., from a file of previously failed updates), providing much greater control over long-running operations.
+- **Comprehensive User Manual (`USAGE.md`)**: A new, detailed `USAGE.md` file has been created to serve as a complete user guide with in-depth explanations and examples for all commands and features.
+
+### Changed
+- **Help System**: The manual `help` command has been removed in favor of `click`'s powerful, auto-generated help system. Docstrings for all commands have been enriched with examples to improve the output of `poparch <COMMAND> --help`.
+- The main `poparch --help` output now links directly to the new online user manual.
+
 ## [2.2.0] - 2025-08-17
 
 ### Added

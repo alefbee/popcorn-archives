@@ -100,6 +100,8 @@ pip install -e .
 
 ## Usage
 
+For a quick reference, see the table below. For a complete guide with detailed examples for all commands, please see the **[Full Usage Manual](USAGE.md)**.
+
 Here is a summary of the available commands:
 
 | Command | Description | Example |

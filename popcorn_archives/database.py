@@ -325,3 +325,30 @@ def search_movies_advanced(title=None, director=None, actor=None, keyword=None, 
 
         cursor = conn.execute(query, tuple(params))
         return cursor.fetchall()
+    
+def get_movies_by_name_list(name_list):
+    """
+    Takes a list of 'Title (YYYY)' strings and returns the corresponding
+    movie records from the database.
+    """
+    with get_db_connection() as conn:
+        # This is a bit complex: we need to parse the names and create a
+        # dynamic query.
+        movies_to_find = []
+        from .core import parse_movie_title # Avoid circular import
+        for name in name_list:
+            title, year = parse_movie_title(name)
+            if title and year:
+                movies_to_find.append((title, year))
+
+        if not movies_to_find:
+            return []
+        
+        # Create placeholders for the query: e.g., "(?, ?) OR (?, ?)"
+        placeholders = " OR ".join(["(LOWER(title) = LOWER(?) AND year = ?)"] * len(movies_to_find))
+        # Flatten the list of tuples for the parameters
+        params = [item for t in movies_to_find for item in t]
+        
+        sql = f"SELECT title, year FROM movies WHERE {placeholders}"
+        cursor = conn.execute(sql, tuple(params))
+        return cursor.fetchall()
