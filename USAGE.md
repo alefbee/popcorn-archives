@@ -133,14 +133,29 @@ Adds movies in bulk from a CSV file. The CSV file must have a header row with th
 Exports your entire movie archive to a CSV file, which is useful for backups.
 -   **Example:** `poparch export my_collection_backup.csv`
 
-### `update [--force]`
-Fetches missing details (genre, plot, cast, etc.) for all movies in your archive from TMDb.
--   By default, it only fetches for movies with incomplete data.
--   Use `--force` to re-fetch details for **all** movies, even those that are already complete. This is useful for refreshing your data.
--   If the update is interrupted, you can run it again to continue where you left off.
--   **Example:** `poparch update`
--   **Example (Force):** `poparch update --force`
+### `update [FILEPATH] [--force]`
+Fetches missing details for movies in your archive from TMDb. This command has three distinct modes of operation.
 
+-   **Default Mode (Most Common):**
+    When run without any arguments, it smartly finds only the movies with incomplete data and fetches their details.
+    ```bash
+    poparch update
+    ```
+
+-   **Targeted Mode (For Retrying Failures):**
+    You can provide a path to a text file. The command will then **only** update the movies listed in that file (one `'Title (YYYY)'` per line). This is perfect for retrying a list of movies that failed in a previous bulk update.
+    ```bash
+    # First, create a file named 'failed.txt' with the movie names
+    poparch update failed.txt
+    ```
+
+-   **Force Mode (For Refreshing All Data):**
+    The `--force` flag tells the application to re-fetch details for **every single movie** in your archive, overwriting any existing data. This is useful for refreshing your entire collection with the latest information.
+    ```bash
+    poparch update --force
+    ```
+
+> **Note on Priority:** The command prioritizes the modes in this order: **Targeted > Force > Default**. For example, if you run `poparch update --force failed.txt`, the command will only update the movies in `failed.txt` and the `--force` flag will be ignored
 ---
 
 ## Tracking Watched Status
