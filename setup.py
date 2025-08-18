@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='popcorn-archives',
-    version='2.3.0',
+    version='2.3.1',
     packages=find_packages(),
     license="MIT",
     include_package_data=True,

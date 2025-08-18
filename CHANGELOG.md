@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2025-08-18
+
+### Fixed
+- Improved the visual alignment in the `search` command's output. The separator line now has a fixed width that perfectly matches the content above it, providing a cleaner and more consistent look across different terminal sizes.
+
 ## [2.3.0] - 2025-08-18
 
 ### Added

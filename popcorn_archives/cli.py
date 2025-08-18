@@ -221,21 +221,19 @@ def search(title_query, actor, director, keyword, collection):
     header = f"🔎 Found {len(results)} movies for " + " and ".join(header_parts)
     click.echo(click.style("\n" + header, bold=True, fg='cyan'))
 
-    # Get terminal width for the separator, with a default
-    try:
-        # Subtract a few characters for padding
-        terminal_width = os.get_terminal_size().columns - 5
-    except OSError:
-        terminal_width = 75 # Default width
+    # Define constants for formatting
+    TITLE_WIDTH = 45
+    YEAR_WIDTH = 6
+    PREFIX_WIDTH = 4 + 1 # Length of "  🎬 "
 
-    for i, movie in enumerate(results):
-        # Add a top border for the card, but not for the very first item
-        if i > 0:
-            click.echo("") # Add a blank line for spacing
-        
+    # Calculate the total length of the main content line
+    total_line_length = PREFIX_WIDTH + TITLE_WIDTH + 1 + YEAR_WIDTH # +1 for the space
+
+    for movie in results:
         # Main line: Title and Year (aligned)
         year_str = f"({movie['year']})"
-        click.echo(f"  🎬 {movie['title']:<45} {year_str:>6}")
+        main_line = f"  🎬 {movie['title']:<{TITLE_WIDTH}} {year_str:>{YEAR_WIDTH}}"
+        click.echo(main_line)
 
         # Sub-lines for context-specific info
         if director and movie['director']:
@@ -249,8 +247,10 @@ def search(title_query, actor, director, keyword, collection):
             safe_echo(f"     {'Part of:':<15} {movie['collection']}")
         
         # Bottom border for the card
-        separator = "─" * terminal_width
-        click.echo(click.style(f"  {separator}", fg='bright_black'))
+        # The separator starts with the same indentation as the main line
+        separator_char = "─"
+        separator = "  " + (separator_char * (total_line_length - 2))
+        click.echo(click.style(separator, fg='bright_black'))
 
 @cli.command()
 @click.option('--unwatched', is_flag=True, help="Suggest a random movie you haven't watched yet.")
