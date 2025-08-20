@@ -133,17 +133,15 @@ Here is a summary of the available commands:
 
 Popcorn Archives is actively being developed. Here's a look at some of the exciting features planned for future releases. Contributions are welcome!
 
-### Core Enhancements
+### Core Enhancements & Power Features
 -   [x] **Advanced Search & Filtering**:
-    -   Implement a powerful `search` command that can filter by multiple criteria at once.
-    -   Examples:
-        -   `poparch search --actor "Tom Hanks"`
-        -   `poparch search --director "Christopher Nolan"`
-        -   `poparch search --keyword "time travel"`
-        -   `poparch search --collection "The Matrix Collection"`
--   [ ] **Full Data Export/Import**:
-    -   Add a `--full` flag to the `export` command to save all movie details (including genre, plot, cast, etc.) to the CSV.
-    -   Make the `import` command smart enough to detect and import these full backups, skipping redundant API calls.
+    -   Implement a powerful `search` command that can filter by multiple criteria at once (e.g., by actor, director, keyword).
+-   [ ] **Personalized Stats Dashboard**:
+    -   Enhance the `stats` command to provide insights into the user's movie taste, such as top favorite genres and most frequent topics (by processing keywords).
+-   [ ] **JSON Output for Scripting**:
+    -   Add a `--json` flag to commands like `info`, `search`, and `stats` to output data in a machine-readable JSON format, allowing `poparch` to be used in scripts.
+-   [ ] **Advanced Configuration**:
+    -   Expand the `config` command to allow users to customize aspects of the application, such as default output formats or color schemes.
 
 ### New Commands & Features
 -   [ ] **Smart Recommendations**:
@@ -152,13 +150,29 @@ Popcorn Archives is actively being developed. Here's a look at some of the excit
     -   Add a `poparch rate <'Title YYYY'> <score>` command to allow users to add their personal ratings.
     -   Implement a `poparch note <'Title YYYY'>` command that opens the system's default text editor for writing personal notes.
 -   [ ] **Playlists / Custom Lists**:
-    -   Introduce a full-featured list management system (`list create`, `list add`, `list show`) to allow users to organize movies into custom collections like "Sci-Fi Classics" or "Oscar Winners".
+    -   Introduce a full-featured list management system (`list create`, `list add`, `list show`) to organize movies into custom collections.
+-   [ ] **Import from Letterboxd**:
+    -   Add a powerful importer to read a user's exported CSV from **Letterboxd**, including their ratings and watched status.
+-   [ ] **Smart Add from Filename**:
+    -   Create a command like `poparch add --from-file <path/to/movie.mkv>` that intelligently parses the movie title from a filename and adds it to the archive.
+-   [ ] **TV Show Support**:
+    -   Expand the application's scope to include tracking and managing TV series in addition to movies.
 
 ### UI/UX Improvements
--   [ ] **Comprehensive Help Command**:
-    -   Create a master `poparch help` command that displays a beautifully formatted guide with examples for all commands and their options.
--   [ ] **Configuration Improvements**:
-    -   Merge the `where` command into `poparch config --show-path` for a more unified configuration experience.
+-   [ ] **Shell Completion**:
+    -   Implement shell completion for commands and options (e.g., `poparch s<TAB>`), making the tool faster to use for power users.
+-   [ ] **Full Data Export/Import**:
+    -   Add a `--full` flag to the `export` command to save all movie details.
+    -   Make the `import` command smart enough to detect and import these full backups.
+
+### 🌱 Project & Community
+-   [ ] **Advanced Documentation**:
+    -   Create a full documentation website using GitHub Pages and a tool like MkDocs or Sphinx.
+    -   Build out the GitHub Wiki with more in-depth guides.
+-   [ ] **Contribution Guide**:
+    -   Create a `CONTRIBUTING.md` file to explain how other developers can contribute to the project, report bugs, and suggest features.
+-   [ ] **Publish to PyPI**:
+    -   The final step: publish the project to the official Python Package Index (PyPI) so users worldwide can install it simply with `pip install popcorn-archives`.
 
 ## Testing & Quality Assurance
 
