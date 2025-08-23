@@ -4,6 +4,7 @@ import re
 import requests
 from tqdm import tqdm
 from . import config as config_manager
+import zipfile
 
 def parse_movie_title(name):
     """
@@ -144,3 +145,46 @@ def fetch_movie_details_from_api(title, year=None):
         return {"Error": f"Network/API Error: {e}"}
     except Exception as e:
         return {"Error": f"An unexpected error occurred: {e}"}
+    
+def process_letterboxd_zip(filepath):
+    """
+    Processes a Letterboxd ZIP export and categorizes movies.
+    Returns three lists: (movies_to_update, movies_to_add, not_found_list)
+    """
+    from . import database # Lazy load
+
+    try:
+        with zipfile.ZipFile(filepath, 'r') as zf:
+            # Check for ratings.csv first, as it contains the most info
+            if 'ratings.csv' not in zf.namelist():
+                return None, None, {"Error": "ratings.csv not found in the ZIP file."}
+            
+            with zf.open('ratings.csv') as csv_file:
+                # We need to decode the bytes to text for the csv reader
+                content = csv_file.read().decode('utf-8')
+                reader = csv.DictReader(content.splitlines())
+                
+                movies_to_update = []
+                movies_to_add = []
+
+                for row in reader:
+                    title, year = row.get('Name'), row.get('Year')
+                    rating = row.get('Rating')
+                    if not title or not year: continue
+                    
+                    movie_data = {
+                        'title': title,
+                        'year': int(year),
+                        'rating': int(float(rating) * 2) if rating else None, # Convert 0.5-5 to 1-10
+                        'watched': True # If it has a rating, it's been watched
+                    }
+
+                    # Check if the movie exists in our local database
+                    if database.get_movie_details(title, int(year)):
+                        movies_to_update.append(movie_data)
+                    else:
+                        movies_to_add.append(movie_data)
+        
+        return movies_to_update, movies_to_add, None
+    except Exception as e:
+        return None, None, {"Error": f"Failed to process ZIP file: {e}"}

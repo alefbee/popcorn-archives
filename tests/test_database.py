@@ -1,20 +1,15 @@
-# tests/test_database.py
-
 import pytest
 import sqlite3
 from popcorn_archives import database
 
 @pytest.fixture
-def db_connection():
+def db_connection(monkeypatch):
     """
-    A fixture that sets up an in-memory SQLite database for testing.
-    It creates the necessary table and yields a connection object.
+    A fixture that sets up a complete in-memory database for testing.
     """
-    # Use an in-memory database for complete isolation.
     conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row # Important for accessing columns by name
+    conn.row_factory = sqlite3.Row
     
-    # Create the full table schema needed for the tests.
     conn.execute('''
         CREATE TABLE movies (
             id INTEGER PRIMARY KEY,
@@ -30,6 +25,7 @@ def db_connection():
             "cast" TEXT,
             keywords TEXT,
             collection TEXT,
+            user_rating INTEGER, 
             UNIQUE(title, year)
         )
     ''')
@@ -72,3 +68,40 @@ def test_watched_status(db_connection):
     # Verify the change.
     details_updated = database.get_movie_details("Test Movie", 2020)
     assert details_updated['watched'] == 1
+
+def test_user_rating(db_connection):
+    """
+    Tests setting a valid rating, an invalid rating, and for a non-existent movie.
+    """
+    # Test setting a valid rating
+    success, msg = database.set_user_rating("Test Movie", 2020, 8)
+    assert success is True
+    
+    # Verify the rating was saved correctly
+    details = database.get_movie_details("Test Movie", 2020)
+    assert details['user_rating'] == 8
+
+    # Test setting an invalid rating (e.g., 11)
+    success, msg = database.set_user_rating("Test Movie", 2020, 11)
+    assert success is False
+    assert "must be between 1 and 10" in msg
+
+    # Test setting a rating for a movie that doesn't exist
+    success, msg = database.set_user_rating("Ghost Movie", 2025, 5)
+    assert success is False
+    assert "Movie not found" in msg
+
+def test_get_highest_rated_movie(db_connection):
+    """Tests finding the highest-rated movie."""
+    # Add some more movies with ratings
+    database.add_movie("Good Movie", 2021)
+    database.add_movie("Great Movie", 2022)
+    database.set_user_rating("Test Movie", 2020, 7)
+    database.set_user_rating("Good Movie", 2021, 9)
+    database.set_user_rating("Great Movie", 2022, 9) # Two movies with the same top rating
+
+    movie, rating = database.get_highest_rated_movie()
+    
+    assert rating == 9
+    # The result could be either of the two movies with a 9/10 rating
+    assert movie['title'] in ["Good Movie", "Great Movie"]

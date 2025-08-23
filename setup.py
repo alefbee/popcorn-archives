@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='popcorn-archives',
-    version='2.3.2',
+    version='3.0.0',
     packages=find_packages(),
     license="MIT",
     include_package_data=True,
@@ -10,6 +10,7 @@ setup(
         'Click',
         'tqdm',
         'requests',
+        'inquirer',
     ],
     entry_points={
         'console_scripts': [

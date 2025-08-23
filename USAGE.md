@@ -119,15 +119,32 @@ Removes a specific movie from your archive after asking for confirmation.
 
 ---
 
+## Rating Your Movies
+
+### `rate <'Title YYYY'> <rating>`
+Rates a movie in your archive on a scale from 1 to 10. This helps you keep track of your favorites.
+-   **Example:** `poparch rate "The Matrix 1999" 10`
+
+Your personal rating will be displayed with stars (⭐) in the `info` command's output.
+
+---
+
 ## Bulk Operations
 
 ### `scan <path>`
 Scans a directory and finds all sub-folders that match a valid movie name format (`Title YYYY` or `Title (YYYY)`). It will then ask for confirmation before adding them to your archive.
 -   **Example:** `poparch scan /path/to/my/movies`
 
-### `import <file.csv>`
-Adds movies in bulk from a CSV file. The CSV file must have a header row with the column `name`.
--   **Example:** `poparch import movies_to_add.csv`
+### `import <filepath> [--letterboxd]`
+Adds movies in bulk. This command supports two modes:
+
+-   **Standard CSV Import:**
+    By default, it imports from a simple CSV file with a `name` header.
+    -   **Example:** `poparch import movies_to_add.csv`
+
+-   **Letterboxd ZIP Import:**
+    Use the `--letterboxd` flag to import your entire history from a Letterboxd data export ZIP file. This will import your movies, watched status, and personal ratings. The process is fully interactive.
+    -   **Example:** `poparch import --letterboxd letterboxd-export.zip`
 
 ### `export <file.csv>`
 Exports your entire movie archive to a CSV file, which is useful for backups.

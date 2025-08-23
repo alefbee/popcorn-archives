@@ -233,3 +233,39 @@ def test_advanced_search_no_results(mocker):
     
     assert result.exit_code == 0
     assert "No movies found matching your criteria." in result.output
+
+def test_rate_command_success(mocker):
+    """Tests the 'rate' command with valid input."""
+    # Mock the database function to simulate a successful update
+    mock_set_rating = mocker.patch('popcorn_archives.database.set_user_rating', return_value=(True, "Success"))
+    
+    runner = CliRunner()
+    result = runner.invoke(cli, ['rate', 'Test Movie 2020', '9'])
+    
+    assert result.exit_code == 0
+    assert "Successfully rated 'Test Movie (2020)' as 9/10." in result.output
+    
+    # Verify that the database function was called with the correct arguments
+    mock_set_rating.assert_called_once_with("Test Movie", 2020, 9)
+
+def test_rate_command_invalid_rating(mocker):
+    """Tests the 'rate' command with a rating outside the 1-10 range."""
+    runner = CliRunner()
+    # The IntRange in the command itself should catch this
+    result = runner.invoke(cli, ['rate', 'Test Movie 2020', '11'])
+    
+    assert result.exit_code != 0 # Should exit with an error
+    assert "Invalid value for 'RATING'" in result.output
+
+def test_info_displays_user_rating(mocker):
+    """Tests that the 'info' command correctly displays the user's rating."""
+    # Mock a movie that has a user rating
+    mock_movie = {'title': 'The Matrix', 'year': 1999, 'user_rating': 10, 'plot': 'A plot.'}
+    mocker.patch('popcorn_archives.database.get_movie_details', return_value=mock_movie)
+    
+    runner = CliRunner()
+    result = runner.invoke(cli, ['info', 'The Matrix 1999'])
+    
+    assert result.exit_code == 0
+    # Check for the visual representation (10 stars)
+    assert "Your Rating: ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐" in result.output

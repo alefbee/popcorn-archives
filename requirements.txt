@@ -1,14 +1,22 @@
+blessed==1.21.0
 certifi==2025.8.3
 charset-normalizer==3.4.3
 click==8.2.1
+colorama==0.4.6
+editor==1.6.6
 idna==3.10
 iniconfig==2.1.0
+inquirer==3.4.1
 packaging==25.0
 pluggy==1.6.0
--e git+https://github.com/alefbee/popcorn-archives.git@03125bb40adf119211b263c78576e0ede5d9341c#egg=popcorn_archives
+-e git+https://github.com/alefbee/popcorn-archives.git@ed42bdbd141e91765d998e883419eb95619c8099#egg=popcorn_archives
 Pygments==2.19.2
 pytest==8.4.1
 pytest-mock==3.14.1
+readchar==4.2.1
 requests==2.32.4
+runs==1.2.2
 tqdm==4.67.1
 urllib3==2.5.0
+wcwidth==0.2.13
+xmod==1.8.1

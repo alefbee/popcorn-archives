@@ -54,7 +54,8 @@ def init_db():
             "runtime": "INTEGER",
             "cast": "TEXT",
             "keywords": "TEXT",
-            "collection": "TEXT"
+            "collection": "TEXT",
+            "user_rating": "INTEGER"
         }
 
         # Add any missing columns
@@ -408,3 +409,35 @@ def get_top_decade():
         """
         cursor = conn.execute(sql)
         return cursor.fetchone()
+
+def set_user_rating(title, year, rating):
+    """Sets a user's personal rating (1-10) for a specific movie."""
+    if not 1 <= rating <= 10:
+        return False, "Rating must be between 1 and 10."
+
+    sql = "UPDATE movies SET user_rating = ? WHERE LOWER(title) = LOWER(?) AND year = ?"
+    with get_db_connection() as conn:
+        cursor = conn.execute(sql, (rating, title, year))
+        conn.commit()
+        if cursor.rowcount > 0:
+            return True, "Rating updated."
+        else:
+            return False, "Movie not found in archive."
+
+def get_highest_rated_movie():
+    """Finds the user's highest-rated movie(s)."""
+    with get_db_connection() as conn:
+        # Find the max rating value first
+        max_rating_cursor = conn.execute("SELECT MAX(user_rating) FROM movies")
+        max_rating = max_rating_cursor.fetchone()[0]
+
+        if not max_rating or max_rating == 0:
+            return None, None # No ratings given yet
+
+        # Find all movies with that rating
+        cursor = conn.execute(
+            "SELECT title, year FROM movies WHERE user_rating = ?",
+            (max_rating,)
+        )
+        # We only return the first one if there are multiple
+        return cursor.fetchone(), max_rating

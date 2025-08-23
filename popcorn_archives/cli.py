@@ -7,6 +7,7 @@ from click import version_option
 from importlib.metadata import version
 from . import database
 from . import config as config_manager
+import inquirer
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help'], max_content_width=120))
 @version_option(version=version("popcorn-archives"), prog_name="popcorn-archives")
@@ -86,6 +87,12 @@ def stats():
     if top_decade:
         click.echo(f"  {'Your Golden Decade:':<20} The {int(top_decade['decade'])}s (with {top_decade['movie_count']} movies)")
     
+    # --- NEW: Add Highest Rated Movie ---
+    top_movie, top_rating = database.get_highest_rated_movie()
+    if top_movie:
+        click.echo(f"  {'Your Top Rated:':<20} {top_movie['title']} ({top_movie['year']}) - ({top_rating}/10 ⭐)")
+    # ------------------------------------
+    
     click.echo("")
 
 
@@ -153,23 +160,75 @@ def scan(path):
         click.echo(click.style("Operation cancelled. No movies were added to the archive.", fg='red'))
 
 
-@cli.command(name='import')
-@click.argument('filepath', type=click.Path(exists=True, dir_okay=False))
-def import_csv(filepath):
-    """Imports movies from a CSV file."""
-    from . import core
-    movies_to_add = core.read_csv_file(filepath)
-    if not movies_to_add:
-        click.echo("No movies found to import in the CSV file.")
+@cli.command(name="import")
+@click.argument('filepath', type=click.Path(exists=True))
+@click.option('--letterboxd', is_flag=True, help="Import data from a Letterboxd ZIP export.")
+def import_data(filepath, letterboxd):
+    """Imports movies from a standard CSV or a Letterboxd ZIP file."""
+    from . import core, database
+    
+    if not letterboxd:
+        # --- Logic for standard CSV import (unchanged) ---
+        # ...
         return
 
-    click.echo(f"Found {len(movies_to_add)} movies in the CSV file.")
-    if click.confirm("Do you want to add these movies to the archive?"):
-        count = 0
-        for title, year in tqdm(movies_to_add, desc="Importing CSV"):
-            if database.add_movie(title, year):
-                count += 1
-        click.echo(click.style(f"{count} new movies imported successfully from the CSV file.", fg='green'))
+    # --- NEW: Logic for Letterboxd import ---
+    click.echo("Processing Letterboxd export file...")
+    to_update, to_add, error = core.process_letterboxd_zip(filepath)
+
+    if error:
+        click.echo(click.style(error["Error"], fg='red'))
+        return
+
+    click.echo(f"Found {len(to_update)} movies to update in your archive.")
+    click.echo(f"Found {len(to_add)} new movies not in your archive.")
+
+    movies_to_process = []
+    
+    if not to_update and not to_add:
+        click.echo("Nothing to import.")
+        return
+
+    if to_add:
+        questions = [
+            inquirer.List('choice',
+                message="Do you want to add the new movies found in the export?",
+                choices=['Yes, add all new movies', 'No, only update existing movies', 'Abort'],
+            ),
+        ]
+        answer = inquirer.prompt(questions)
+        
+        if not answer or answer['choice'] == 'Abort':
+            click.echo("Import aborted.")
+            return
+        
+        if answer['choice'] == 'Yes, add all new movies':
+            movies_to_process.extend(to_add)
+        else:
+            # User chose to only update, so we list the movies that will be skipped.
+            skipped_list = [f"{m['title']} ({m['year']})" for m in to_add]
+            click.echo(click.style("\nThe following movies will be skipped:", bold=True))
+            click.echo(", ".join(skipped_list))
+    
+    # Always include movies that are being updated
+    movies_to_process.extend(to_update)
+
+    if not movies_to_process:
+        click.echo("No movies selected for processing. Exiting.")
+        return
+
+    click.echo(f"\nPreparing to process {len(movies_to_process)} movies...")
+    for movie in tqdm(movies_to_process, desc="Importing from Letterboxd"):
+        # If movie is new, add it first
+        database.add_movie(movie['title'], movie['year'])
+        
+        # Update watched status and rating
+        database.set_movie_watched_status(movie['title'], movie['year'], watched_status=True)
+        if movie.get('rating'):
+            database.set_user_rating(movie['title'], movie['year'], movie['rating'])
+
+    click.echo(click.style("\nLetterboxd import complete!", fg='green'))
+
 
 @cli.command()
 @click.argument('title_query', required=False)
@@ -535,27 +594,39 @@ def smart_info(query):
     else:
         click.echo(click.style(f"Could not determine a precise year for '{query}'. Please be more specific.", fg='yellow'))
 
-def display_movie_details(movie):
-    """A helper function to consistently display movie details."""
+def display_movie_details(movie_data):
+    """A consistent helper to display movie details from a dict."""
     import textwrap
-    click.echo(click.style(f"\n🎬 {movie['title']} ({movie['year']})", bold=True, fg='cyan'))
-    click.echo("-" * (len(movie['title']) + len(str(movie['year'])) + 5))
+    click.echo(click.style(f"\n🎬 {movie_data['title']} ({movie_data['year']})", bold=True, fg='cyan'))
 
-    runtime_str = f"{movie.get('runtime')} min" if movie.get('runtime') else "N/A"
-    score_str = movie.get('tmdb_score') or "N/A"
+    # We check for a rating that is not None and greater than 0.
+    user_rating = movie_data.get('user_rating')
+    if user_rating and user_rating > 0:
+        rating_stars = "⭐" * user_rating
+        # Add padding if the rating is less than 10 to keep alignment
+        padding = " " * (10 - user_rating)
+        click.echo(click.style(f"  Your Rating: {rating_stars}{padding} ({user_rating}/10)", fg='yellow'))
+
+    click.echo("-" * (len(movie_data['title']) + len(str(movie_data['year'])) + 5))
+
+    runtime_str = f"{movie_data.get('runtime')} min" if movie_data.get('runtime') else "N/A"
+    score_str = movie_data.get('tmdb_score') or "N/A"
     click.echo(f"  {'TMDb Score:':<15} {score_str:<15} | {'Runtime:':<10} {runtime_str}")
-    click.echo(f"  {'Genre:':<15} {movie.get('genre', 'N/A')}")
-    click.echo(f"  {'Director:':<15} {movie.get('director', 'N/A')}")
-    click.echo(f"  {'Cast:':<15} {movie.get('cast', 'N/A')}")
-    if movie.get('collection'):
-        click.echo(f"  {'Collection:':<15} {movie.get('collection')}")
-    if movie.get('imdb_id'):
-        imdb_link = f"https://www.imdb.com/title/{movie.get('imdb_id')}/"
+    click.echo(f"  {'Genre:':<15} {movie_data.get('genre', 'N/A')}")
+    click.echo(f"  {'Director:':<15} {movie_data.get('director', 'N/A')}")
+    click.echo(f"  {'Cast:':<15} {movie_data.get('cast', 'N/A')}")
+    
+    if movie_data.get('collection'):
+        click.echo(f"  {'Collection:':<15} {movie_data.get('collection')}")
+    if movie_data.get('imdb_id'):
+        imdb_link = f"https://www.imdb.com/title/{movie_data.get('imdb_id')}/"
         click.echo(f"  {'IMDb Page:':<15} {imdb_link}")
-    if movie.get('plot'):
+
+    if movie_data.get('plot'):
         click.echo(click.style("\nPlot:", bold=True))
-        plot_wrapped = '\n'.join(textwrap.wrap(movie['plot'], width=70, initial_indent='  ', subsequent_indent='  '))
+        plot_wrapped = '\n'.join(textwrap.wrap(movie_data.get('plot', ''), width=70, initial_indent='  ', subsequent_indent='  '))
         click.echo(plot_wrapped)
+    
     click.echo("")
 
 @cli.command()
@@ -690,6 +761,26 @@ def update(filepath, force):
                 
                 click.echo(f"  - {movie_name:<40} | Reason: {error_display}")
 
+@cli.command()
+@click.argument('name')
+@click.argument('rating', type=click.IntRange(1, 10))
+def rate(name, rating):
+    """
+    Rates a movie in your archive on a scale of 1 to 10.
+    Example: poparch rate "The Matrix 1999" 10
+    """
+    from . import core, database
+    
+    title, year = core.parse_movie_title(name)
+    if not title or not year:
+        click.echo(click.style(f"Error: Invalid movie format for '{name}'.", fg='red'))
+        return
+        
+    success, message = database.set_user_rating(title, year, rating)
+    if success:
+        click.echo(click.style(f"Successfully rated '{title} ({year})' as {rating}/10.", fg='green'))
+    else:
+        click.echo(click.style(f"Error: {message}", fg='red'))
 
 if __name__ == '__main__':
     cli()

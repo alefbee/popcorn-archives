@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2025-08-23
+
+### Added
+- **Personal Ratings**: You can now rate your movies on a 1-10 scale using the new `rate` command. Your personal rating is displayed in the `info` command and your top-rated movie is featured in `stats`.
+- **Letterboxd Import**: A powerful new feature to import your entire movie history, including watched status and ratings, from a Letterboxd ZIP export. The importer is interactive and gives you full control over which movies are added or updated.
+
+### Changed
+- **Database Schema**: The database has been updated to include a `user_rating` column to store personal ratings. The migration is handled automatically.
+- **Dependencies**: Added the `inquirer` library to create beautiful and user-friendly interactive menus.
+
 ## [2.3.2] - 2025-08-23
 
 ### Changed

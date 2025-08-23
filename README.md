@@ -19,14 +19,24 @@ Take a tour of a typical user session in this single demonstration. The animatio
 3.  **Enriching the Data (`update`):** With the movies added, the `poparch update` command is run. It automatically finds all movies with missing details and fetches their genre, plot, and rating information from the OMDb API.
 4.  **Viewing Movie Details (`info`):** To see the newly fetched data, the user runs `poparch info` on a specific movie, displaying its detailed information card.
 5.  **Getting a Recommendation (`random --unwatched`):** Finally, looking for a movie to watch, the user runs `poparch random --unwatched` to get a suggestion for a great film they haven't seen yet.
+
 ## Features
 
--   🌐 **Rich Movie Details**: Fetch detailed movie information—including genre, director, plot, and ratings—from **The Movie Database (TMDb)**.
--   📝 **Watched Status Tracking**: Keep track of which movies you've seen with the `watch` and `unwatch` commands. Get random suggestions just from your unwatched list!
--   🔄 **Bulk Updates**: Fetch details for your entire collection at once. The process is robust, provides detailed progress, and gives a final summary of successes and failures.
--   🏷️ **Interactive Genre Filtering**: Use the `genre` command without arguments to get a dynamic, numbered list of all genres in your archive to choose from.
--   ✅ **Flexible Movie Detection**: Intelligently scans your movie directories using common naming formats.
--   ✨ **Robust Error Handling**: Gracefully skips unparsable folders and handles network timeouts without crashing.
+### 🗂️ Collection Management
+-   **Flexible Importing**: Seamlessly build your collection by **scanning** directories of movie folders, **importing** from standard CSV files, or migrating your entire history from a **Letterboxd** ZIP export.
+-   **Personal Ratings & Watched Status**: Keep track of what you've seen with `watch`/`unwatch` and rate movies on a 1-10 scale with the `rate` command. Your Letterboxd ratings are imported automatically!
+-   **Keep Your Archive Rich**: Use the `update` command to fetch rich metadata for your entire collection at once. The process is robust and provides a detailed summary of successes and failures.
+
+### 🔎 Discovery & Exploration
+-   **Smart & Interactive Info**: The powerful `info` command acts as your gateway to movie knowledge. It intelligently finds movies both locally and online, with interactive menus for ambiguous queries.
+-   **Advanced Search & Filtering**: Instantly search your local archive with a rich `search` command that can filter by title, `--actor`, `--director`, `--keyword`, and `--collection`.
+-   **Personalized Stats Dashboard**: Uncover insights into your collection and personal taste with the beautiful `stats` dashboard, which analyzes your top genres, favorite directors, and more.
+-   **Interactive Genre Filtering**: Use the `genre` command without arguments to get a dynamic, numbered list of all genres in your archive to choose from.
+
+### 🔧 Under the Hood
+-   **Rich Movie Details**: Fetches comprehensive movie information—including cast, runtime, collection, and IMDb links—from TMDb and caches it locally.
+-   **Robust & User-Friendly**: The application is designed to be resilient. It gracefully handles errors (like unparsable folder names) and provides clear, helpful feedback.
+-   **Persistent & Safe Storage**: Uses a standard user data directory for its SQLite database, ensuring your archive is safe and independent of the project folder.
 
 ## Installation & Configuration
 
@@ -113,6 +123,7 @@ Here is a summary of the available commands:
 | `export`| Exports the archive to a CSV. | `poparch export backup.csv` |
 | `delete`| Deletes a specific movie. | `poparch delete "The Matrix 1999"` |
 | `clear` | Clears the entire movie archive. | `poparch clear` |
+| `rate` | Rates a movie in your archive | `poparch rate "The Matrix 1999" 10` |
 | **Information & Search** | | |
 | `info` | Smartly finds a movie locally or online. | `poparch info "Pulp Fiction"` |
 | `search`| Advanced search with filters. | `poparch search --director "Nolan"` |
@@ -146,12 +157,13 @@ Popcorn Archives is actively being developed. Here's a look at some of the excit
 ### New Commands & Features
 -   [ ] **Smart Recommendations**:
     -   Create a new `poparch recommend <'Title YYYY'>` command that uses the TMDb API to suggest similar movies.
--   [ ] **Personal Ratings & Notes**:
+-   [x] **Personal Ratings**:
     -   Add a `poparch rate <'Title YYYY'> <score>` command to allow users to add their personal ratings.
+-   [ ] **Personal Notes**:
     -   Implement a `poparch note <'Title YYYY'>` command that opens the system's default text editor for writing personal notes.
 -   [ ] **Playlists / Custom Lists**:
     -   Introduce a full-featured list management system (`list create`, `list add`, `list show`) to organize movies into custom collections.
--   [ ] **Import from Letterboxd**:
+-   [x] **Import from Letterboxd**:
     -   Add a powerful importer to read a user's exported CSV from **Letterboxd**, including their ratings and watched status.
 -   [ ] **Smart Add from Filename**:
     -   Create a command like `poparch add --from-file <path/to/movie.mkv>` that intelligently parses the movie title from a filename and adds it to the archive.
