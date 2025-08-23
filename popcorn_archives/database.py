@@ -448,30 +448,34 @@ def cleanup_duplicates():
     Returns the number of duplicates that were merged.
     """
     with get_db_connection() as conn:
-        # Find groups of duplicates
-        sql_find = "SELECT LOWER(title) as l_title, year, COUNT(id) FROM movies GROUP BY l_title, year HAVING COUNT(id) > 1"
+        # Find groups of potential duplicates (case-insensitive)
+        sql_find = "SELECT LOWER(title) as l_title, year FROM movies GROUP BY l_title, year HAVING COUNT(id) > 1"
         cursor = conn.execute(sql_find)
         duplicate_groups = cursor.fetchall()
 
-        merged_count = 0
+        total_merged = 0
         for group in duplicate_groups:
-            # For each group, get all the individual records
+            # For each group, get all the individual records, ordered by ID
             sql_get_records = "SELECT id, title FROM movies WHERE LOWER(title) = ? AND year = ? ORDER BY id ASC"
             records = conn.execute(sql_get_records, (group['l_title'], group['year'])).fetchall()
 
-            # The first record is the one we keep. The rest are deleted.
+            if not records: continue
+
+            # The first record is the one we want to keep. The rest will be deleted.
             record_to_keep = records[0]
             ids_to_delete = [rec['id'] for rec in records[1:]]
             
-            # Make sure the record to keep has the standard Title Case
-            conn.execute("UPDATE movies SET title = ? WHERE id = ?", (record_to_keep['title'].title(), record_to_keep['id']))
+            if ids_to_delete:
+                # 1. Delete the redundant records
+                placeholders = ','.join('?' for _ in ids_to_delete)
+                conn.execute(f"DELETE FROM movies WHERE id IN ({placeholders})", tuple(ids_to_delete))
+                total_merged += len(ids_to_delete)
 
-            # Delete the other duplicates
-            conn.execute(f"DELETE FROM movies WHERE id IN ({','.join('?' for _ in ids_to_delete)})", tuple(ids_to_delete))
-            merged_count += len(ids_to_delete)
+            # 2. Now that duplicates are gone, safely update the remaining record to the standard case
+            conn.execute("UPDATE movies SET title = ? WHERE id = ?", (record_to_keep['title'].title(), record_to_keep['id']))
         
         conn.commit()
-        return merged_count
+        return total_merged
     
 def get_suspicious_movies():
     """
