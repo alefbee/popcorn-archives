@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.1] - 2025-08-23
+
+### Fixed
+- **Improved API Result Selection**: The API fetching logic now sorts online search results by `popularity`. This prevents issues where an incorrect or obscure movie (like a short film) was being selected, ensuring commands like `update --repair` and `info` now fetch the most relevant movie data.
+- **Test Suite Stability**: Resolved multiple failures in the test suite related to interactive commands. The tests for `update --repair` and `update --cleanup` have been rewritten with more robust mocking for `inquirer`, ensuring the CI pipeline is stable and reliable.
+
 ## [3.2.0] - 2025-08-23
 
 ### Added

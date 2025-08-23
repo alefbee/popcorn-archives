@@ -104,7 +104,12 @@ def fetch_movie_details_from_api(title, year=None):
 
         sorted_results = sorted(search_data['results'], key=lambda r: r.get('popularity', 0), reverse=True)
         
-        best_match = sorted_results[0]
+        # If a year was provided, try to find an exact year match within the sorted results
+        if year:
+            best_match = next((r for r in sorted_results if str(year) in r.get('release_date', '')), sorted_results[0])
+        else:
+            best_match = sorted_results[0]
+        
         movie_id = best_match['id']
         
         if len(search_data['results']) > 1 and not year:

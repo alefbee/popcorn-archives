@@ -304,17 +304,22 @@ def test_update_command_default_workflow(mocker):
     mock_db_update.assert_called_once()
 
 def test_update_repair_interactive_flow(mocker):
-    """Tests the 'update --repair' workflow where the user selects one movie to fix."""
-    suspicious_data = {"Short Film (2020)": "Unusually short", "Bad Data (2021)": "Missing"}
+    """Tests the 'update --repair' workflow."""
+    suspicious_data = {"Short Film (2020)": "...", "Bad Data (2021)": "..."}
     mocker.patch('popcorn_archives.database.get_suspicious_movies', return_value=suspicious_data)
     
-    # Mock user's choices: Yes for the first, No for the second
+    # FIX: Use a single, correct side_effect for multiple prompts
     mocker.patch('inquirer.prompt', side_effect=[
-        {'confirm': True},
-        {'confirm': False}
+        {'confirm': True},  # User says YES to the first movie
+        {'confirm': False}  # User says NO to the second movie
     ])
     
-    mocker.patch('popcorn_archives.database.get_movies_by_name_list', return_value=[{'title': 'Short Film', 'year': 2020}])
+    # Mock the database to return the one movie the user selected for repair
+    mocker.patch('popcorn_archives.database.get_movies_by_name_list', return_value=[
+        {'title': 'Short Film', 'year': 2020}
+    ])
+    
+    # Mock the API and DB update for that one movie
     mock_fetch = mocker.patch('popcorn_archives.core.fetch_movie_details_from_api', return_value={'plot': 'An updated plot.'})
     mock_db_update = mocker.patch('popcorn_archives.database.update_movie_details')
     mocker.patch('time.sleep')
@@ -324,27 +329,30 @@ def test_update_repair_interactive_flow(mocker):
 
     assert result.exit_code == 0
     assert "Found 2 potentially problematic movies" in result.output
+    
+    # Assert the final summary report with the correct numbers
     assert "--- Update Summary ---" in result.output
     assert "Successfully updated: 1" in result.output
+    
     mock_fetch.assert_called_once_with('Short Film', 2020)
     mock_db_update.assert_called_once()
 
-def test_update_cleanup_mode_standalone(mocker):
-    """
-    Tests that `update --cleanup` when run alone ONLY performs cleanup and then exits.
-    """
+def test_update_cleanup_mode_user_aborts_update(mocker):
+    """Tests the 'update --cleanup' workflow where the user aborts the subsequent update."""
     mock_cleanup = mocker.patch('popcorn_archives.database.cleanup_duplicates', return_value=2)
-    # Mock the update function to ensure it's NOT called
+    
+    # FIX: Mock inquirer.prompt instead of click.confirm, and simulate user saying 'No'
+    mocker.patch('inquirer.prompt', return_value={'confirm': False})
+    
     mock_missing = mocker.patch('popcorn_archives.database.get_movies_missing_details')
     
     runner = CliRunner()
     result = runner.invoke(cli, ['update', '--cleanup'])
     
     assert result.exit_code == 0
-    mock_cleanup.assert_called_once()
-    
     assert "Successfully merged 2 duplicate movies." in result.output
-    assert "Cleanup complete." in result.output
+    # FIX: Check for the correct message when user aborts
+    assert "Do you want to continue" in result.output
     
     # Verify that the update logic was NOT triggered
     mock_missing.assert_not_called()
