@@ -441,3 +441,64 @@ def get_highest_rated_movie():
         )
         # We only return the first one if there are multiple
         return cursor.fetchone(), max_rating
+
+def cleanup_duplicates():
+    """
+    Finds and merges duplicate movies (same title, same year, different case).
+    Returns the number of duplicates that were merged.
+    """
+    with get_db_connection() as conn:
+        # Find groups of duplicates
+        sql_find = "SELECT LOWER(title) as l_title, year, COUNT(id) FROM movies GROUP BY l_title, year HAVING COUNT(id) > 1"
+        cursor = conn.execute(sql_find)
+        duplicate_groups = cursor.fetchall()
+
+        merged_count = 0
+        for group in duplicate_groups:
+            # For each group, get all the individual records
+            sql_get_records = "SELECT id, title FROM movies WHERE LOWER(title) = ? AND year = ? ORDER BY id ASC"
+            records = conn.execute(sql_get_records, (group['l_title'], group['year'])).fetchall()
+
+            # The first record is the one we keep. The rest are deleted.
+            record_to_keep = records[0]
+            ids_to_delete = [rec['id'] for rec in records[1:]]
+            
+            # Make sure the record to keep has the standard Title Case
+            conn.execute("UPDATE movies SET title = ? WHERE id = ?", (record_to_keep['title'].title(), record_to_keep['id']))
+
+            # Delete the other duplicates
+            conn.execute(f"DELETE FROM movies WHERE id IN ({','.join('?' for _ in ids_to_delete)})", tuple(ids_to_delete))
+            merged_count += len(ids_to_delete)
+        
+        conn.commit()
+        return merged_count
+    
+def get_suspicious_movies():
+    """
+    Finds movies with potentially incorrect or incomplete data and returns them
+    categorized by the reason they are suspicious.
+    """
+    suspicious_movies = {}
+    
+    with get_db_connection() as conn:
+        # Reason 1: Unusually short runtime for a feature film
+        sql_short = "SELECT title, year FROM movies WHERE runtime > 0 AND runtime < 40"
+        for row in conn.execute(sql_short).fetchall():
+            key = f"{row['title']} ({row['year']})"
+            suspicious_movies[key] = "Unusually short runtime"
+
+        # Reason 2: Missing key information like director or genre
+        sql_missing = "SELECT title, year FROM movies WHERE (director IS NULL OR genre IS NULL) AND plot IS NOT NULL"
+        for row in conn.execute(sql_missing).fetchall():
+            key = f"{row['title']} ({row['year']})"
+            if key not in suspicious_movies: # Don't overwrite a previous reason
+                suspicious_movies[key] = "Missing director or genre"
+
+        # Reason 3: Default "N/A" values stored
+        sql_na = "SELECT title, year FROM movies WHERE director = 'N/A' OR genre = 'N/A'"
+        for row in conn.execute(sql_na).fetchall():
+            key = f"{row['title']} ({row['year']})"
+            if key not in suspicious_movies:
+                suspicious_movies[key] = "Default 'N/A' data stored"
+                
+    return suspicious_movies

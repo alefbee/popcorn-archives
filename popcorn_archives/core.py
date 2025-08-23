@@ -101,6 +101,11 @@ def fetch_movie_details_from_api(title, year=None):
             if year: error_msg += f" ({year})"
             error_msg += " not found on TMDb."
             return {"Error": error_msg}
+
+        sorted_results = sorted(search_data['results'], key=lambda r: r.get('popularity', 0), reverse=True)
+        
+        best_match = sorted_results[0]
+        movie_id = best_match['id']
         
         if len(search_data['results']) > 1 and not year:
              return {

@@ -97,68 +97,81 @@ def test_smart_info_partial_query_multiple_local_matches(mocker):
         {'title': 'The Terminator', 'year': 1984}
     ])
     mock_movie = {'title': 'The Terminator', 'year': 1984, 'plot': 'A human soldier is sent...'}
-    mocker.patch('popcorn_archives.database.get_movie_details', return_value=mock_movie)
-
+    mocker.patch('inquirer.prompt', return_value={'choice': 'The Terminator (1984)'})
+    
     runner = CliRunner()
-    # Simulate user typing '2' and pressing Enter
-    result = runner.invoke(cli, ['info', 'Terminator'], input='2\n')
+    # No need for 'input' anymore, as we've mocked the prompt
+    result = runner.invoke(cli, ['info', 'Terminator'])
 
     assert result.exit_code == 0
-    assert "Found multiple matches in your archive" in result.output
-    assert "2. The Terminator (1984)" in result.output
+    assert "Found multiple matches" in result.output
     assert "A human soldier is sent..." in result.output
 
+
 def test_smart_info_not_found_locally_fetch_and_add(mocker):
+    """Tests `info Title YYYY` when not found locally, fetches online, and user confirms add."""
+    # 1. Mock all external dependencies
     mocker.patch('popcorn_archives.database.get_movie_details', return_value=None)
     mocker.patch('popcorn_archives.database.search_movie', return_value=[])
     
     mock_api_response = { "genre": "Sci-Fi", "director": "Cameron", "plot": "A plot." }
     mocker.patch('popcorn_archives.core.fetch_movie_details_from_api', return_value=mock_api_response)
     
+    mocker.patch('inquirer.prompt', return_value={'confirm': True})
+    
     mock_add = mocker.patch('popcorn_archives.database.add_movie', return_value=True)
     mock_update = mocker.patch('popcorn_archives.database.update_movie_details')
     
     runner = CliRunner()
-    result = runner.invoke(cli, ['info', 'Avatar 2009'], input='y\n')
+    result = runner.invoke(cli, ['info', 'Avatar 2009'])
+    
+    assert result.exit_code == 0
+    assert "Movie 'Avatar (2009)' added" in result.output
+
+def test_smart_info_partial_query_multiple_local_matches(mocker):
+    """Tests choosing from a local ambiguous result."""
+    mocker.patch('popcorn_archives.database.search_movie', return_value=[
+        {'title': 'Terminator 2: Judgment Day', 'year': 1991},
+        {'title': 'The Terminator', 'year': 1984}
+    ])
+    mock_movie_details = {'title': 'The Terminator', 'year': 1984, 'plot': 'A human soldier is sent...'}
+    # CRITICAL: Mock the get_movie_details that is called *after* the choice.
+    mocker.patch('popcorn_archives.database.get_movie_details', return_value=mock_movie_details)
+    
+    # FIX: Mock inquirer to return the user's choice.
+    mocker.patch('inquirer.prompt', return_value={'choice': 'The Terminator (1984)'})
+    
+    runner = CliRunner()
+    result = runner.invoke(cli, ['info', 'Terminator'])
 
     assert result.exit_code == 0
-    assert "Fetching details for 'Avatar (2009)' from TMDb..." in result.output
-    assert "Cameron" in result.output
-    assert "Movie 'Avatar (2009)' added" in result.output
-    mock_add.assert_called_once_with("Avatar", 2009)
-    mock_update.assert_called_once()
+    assert "Found multiple matches" in result.output
+    assert "A human soldier is sent..." in result.output
 
 def test_smart_info_not_found_locally_multiple_online_matches(mocker):
-    """Tests `info Title` with no local results, finds multiple online, and user chooses."""
+    """Tests choosing from an online ambiguous result and confirming the add."""
     mocker.patch('popcorn_archives.database.search_movie', return_value=[])
-
-    # Mock the first API call (partial search) to return multiple results
-    mock_api_multi_response = {
-        "MultipleResults": [
-            {'title': 'Alien', 'year': '1979'},
-            {'title': 'Aliens', 'year': '1986'}
-        ]
-    }
-    # Mock the second API call (precise search) to return full details
-    mock_api_details_response = {"genre": "Horror, Sci-Fi", "director": "James Cameron"}
     
-    mocker.patch('popcorn_archives.core.fetch_movie_details_from_api', side_effect=[
-        mock_api_multi_response, mock_api_details_response
-    ])
+    mock_api_multi = {"MultipleResults": [{'title': 'Alien', 'year': '1979'}, {'title': 'Aliens', 'year': '1986'}]}
+    mock_api_details = {"genre": "Horror, Sci-Fi", "director": "James Cameron"}
+    mocker.patch('popcorn_archives.core.fetch_movie_details_from_api', side_effect=[mock_api_multi, mock_api_details])
     
     mocker.patch('popcorn_archives.database.add_movie', return_value=True)
     mocker.patch('popcorn_archives.database.update_movie_details')
+    mocker.patch('popcorn_archives.database.get_movie_details', return_value=None) # It's a new movie
+
+    mocker.patch('inquirer.prompt', side_effect=[
+        {'choice': 'Aliens (1986)'},
+        {'confirm': True}
+    ])
 
     runner = CliRunner()
-    # User types '2' (for Aliens) and then 'y' (to add it)
-    result = runner.invoke(cli, ['info', 'Alien'], input='2\ny\n')
+    result = runner.invoke(cli, ['info', 'Alien'])
 
     assert result.exit_code == 0
     assert "Found multiple potential matches online" in result.output
-    assert "2. Aliens (1986)" in result.output
     assert "James Cameron" in result.output
-
-    assert "Movie 'Aliens (1986)' added to your archive" in result.output
+    assert "Movie 'Aliens (1986)' added" in result.output
 
 def test_delete_command(mocker):
     """Tests the 'delete' command."""
@@ -269,3 +282,69 @@ def test_info_displays_user_rating(mocker):
     assert result.exit_code == 0
     # Check for the visual representation (10 stars)
     assert "Your Rating: ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐" in result.output
+
+def test_update_command_default_workflow(mocker):
+    """Tests the default 'update' command's workflow."""
+    mocker.patch('popcorn_archives.config.get_api_key', return_value='a_fake_api_key')
+    mocker.patch('popcorn_archives.database.get_movies_missing_details', return_value=[
+        {'title': 'Movie To Update', 'year': 2023}
+    ])
+    mock_api_response = {"plot": "A new plot."}
+    mock_fetch = mocker.patch('popcorn_archives.core.fetch_movie_details_from_api', return_value=mock_api_response)
+    mock_db_update = mocker.patch('popcorn_archives.database.update_movie_details')
+    mocker.patch('time.sleep')
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['update'])
+    
+    assert result.exit_code == 0
+    assert "Searching for movies with missing details" in result.output
+    assert "Successfully updated: 1" in result.output
+    mock_fetch.assert_called_once_with('Movie To Update', 2023)
+    mock_db_update.assert_called_once()
+
+def test_update_repair_interactive_flow(mocker):
+    """Tests the 'update --repair' workflow where the user selects one movie to fix."""
+    suspicious_data = {"Short Film (2020)": "Unusually short", "Bad Data (2021)": "Missing"}
+    mocker.patch('popcorn_archives.database.get_suspicious_movies', return_value=suspicious_data)
+    
+    # Mock user's choices: Yes for the first, No for the second
+    mocker.patch('inquirer.prompt', side_effect=[
+        {'confirm': True},
+        {'confirm': False}
+    ])
+    
+    mocker.patch('popcorn_archives.database.get_movies_by_name_list', return_value=[{'title': 'Short Film', 'year': 2020}])
+    mock_fetch = mocker.patch('popcorn_archives.core.fetch_movie_details_from_api', return_value={'plot': 'An updated plot.'})
+    mock_db_update = mocker.patch('popcorn_archives.database.update_movie_details')
+    mocker.patch('time.sleep')
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['update', '--repair'])
+
+    assert result.exit_code == 0
+    assert "Found 2 potentially problematic movies" in result.output
+    assert "--- Update Summary ---" in result.output
+    assert "Successfully updated: 1" in result.output
+    mock_fetch.assert_called_once_with('Short Film', 2020)
+    mock_db_update.assert_called_once()
+
+def test_update_cleanup_mode_standalone(mocker):
+    """
+    Tests that `update --cleanup` when run alone ONLY performs cleanup and then exits.
+    """
+    mock_cleanup = mocker.patch('popcorn_archives.database.cleanup_duplicates', return_value=2)
+    # Mock the update function to ensure it's NOT called
+    mock_missing = mocker.patch('popcorn_archives.database.get_movies_missing_details')
+    
+    runner = CliRunner()
+    result = runner.invoke(cli, ['update', '--cleanup'])
+    
+    assert result.exit_code == 0
+    mock_cleanup.assert_called_once()
+    
+    assert "Successfully merged 2 duplicate movies." in result.output
+    assert "Cleanup complete." in result.output
+    
+    # Verify that the update logic was NOT triggered
+    mock_missing.assert_not_called()

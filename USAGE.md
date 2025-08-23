@@ -129,7 +129,7 @@ Your personal rating will be displayed with stars (⭐) in the `info` command's 
 
 ---
 
-## Bulk Operations
+## Maintenance & Bulk Operations
 
 ### `scan <path>`
 Scans a directory and finds all sub-folders that match a valid movie name format (`Title YYYY` or `Title (YYYY)`). It will then ask for confirmation before adding them to your archive.
@@ -165,6 +165,11 @@ Fetches missing details for movies in your archive from TMDb. This command has t
     # First, create a file named 'failed.txt' with the movie names
     poparch update failed.txt
     ```
+-   **Repair Mode:** Interactively finds and offers to fix movies with suspicious data (e.g., very short runtime).
+    `poparch update --repair`
+
+-   **Cleanup Mode:** Scans for and merges duplicate entries before updating.
+    `poparch update --cleanup`
 
 -   **Force Mode (For Refreshing All Data):**
     The `--force` flag tells the application to re-fetch details for **every single movie** in your archive, overwriting any existing data. This is useful for refreshing your entire collection with the latest information.

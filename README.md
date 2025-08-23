@@ -1,6 +1,8 @@
 # Popcorn Archives 🍿
 
 [![Run Python Tests](https://github.com/alefbee/popcorn-archives/actions/workflows/ci.yml/badge.svg)](https://github.com/alefbee/popcorn-archives/actions/workflows/ci.yml)
+[![GitHub License](https://img.shields.io/github/license/alefbee/popcorn-archives)](https://github.com/alefbee/popcorn-archives/blob/main/LICENSE)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 > **Note:** As of version 2.0.0, the command has been renamed from `popcorn-archives` to `poparch`!
 

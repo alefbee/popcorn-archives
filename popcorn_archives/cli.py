@@ -8,6 +8,7 @@ from importlib.metadata import version
 from . import database
 from . import config as config_manager
 import inquirer
+import textwrap
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help'], max_content_width=120))
 @version_option(version=version("popcorn-archives"), prog_name="popcorn-archives")
@@ -500,112 +501,23 @@ def _display_and_add_flow(title, year):
     elif not is_in_archive:
         click.echo("Movie was not added to the archive.")
 
-@cli.command(name='info')
-@click.argument('query')
-def smart_info(query):
-    """
-    Smartly finds a movie and displays its details.
-    Searches your local archive first, then online. Handles ambiguity.
-    """
-    from . import core,database
-    import textwrap
-
-    
-    title, year = core.parse_movie_title(query)
-    
-    # Case 1: User provides a full "Title YYYY" query.
-    if title and year:
-        movie = database.get_movie_details(title, year)
-        if movie:
-            display_movie_details(dict(movie))
-        else:
-            click.echo(f"Movie not found locally.")
-            _display_and_add_flow(title, year)
-        return
-
-    # Case 2: User provides a partial query (just a title).
-    search_term = query.strip()
-    click.echo(f"Searching local archive for movies matching '{search_term}'...")
-    local_results = database.search_movie(search_term)
-
-    if len(local_results) == 1:
-        movie = local_results[0]
-        click.echo(f"Found one match: {movie['title']} ({movie['year']}).")
-        full_details = database.get_movie_details(movie['title'], movie['year'])
-        if full_details:
-             display_movie_details(dict(full_details))
-        return
-    
-    if len(local_results) > 1:
-        click.echo("Found multiple matches in your archive. Please choose one:")
-        for i, movie in enumerate(local_results, 1):
-            click.echo(f"  {i}. {movie['title']} ({movie['year']})")
-        
-        try:
-            choice_str = click.prompt("\nEnter the number of your choice", type=str)
-            choice_idx = int(choice_str) - 1
-            if 0 <= choice_idx < len(local_results):
-                chosen_movie = local_results[choice_idx]
-                full_details = database.get_movie_details(chosen_movie['title'], chosen_movie['year'])
-                if full_details:
-                    display_movie_details(dict(full_details))
-            else:
-                click.echo(click.style("Invalid choice.", fg='red'))
-        except (ValueError, IndexError):
-            click.echo(click.style("Invalid input. Please enter a number.", fg='red'))
-        return
-
-    # Case 3: Nothing found locally, search online.
-    click.echo("No local matches found. Searching online on TMDb...")
-    online_results = core.fetch_movie_details_from_api(search_term)
-    
-    if online_results.get("Error"):
-        click.echo(click.style(online_results["Error"], fg='red'))
-        return
-    
-    if online_results.get("MultipleResults"):
-        click.echo("Found multiple potential matches online. Which one did you mean?")
-        choices = online_results["MultipleResults"]
-        for i, movie in enumerate(choices, 1):
-            click.echo(f"  {i}. {movie['title']} ({movie['year']})")
-
-        try:
-            choice_str = click.prompt("\nEnter the number of your choice", type=str)
-            choice_idx = int(choice_str) - 1
-            if 0 <= choice_idx < len(choices):
-                chosen_movie = choices[choice_idx]
-                # We need to parse the year, which might be a string 'N/A'
-                try:
-                    chosen_year = int(chosen_movie['year'])
-                    _display_and_add_flow(chosen_movie['title'], chosen_year)
-                except (ValueError, TypeError):
-                    click.echo(click.style(f"Could not parse year for '{chosen_movie['title']}'. Cannot fetch details.", fg='yellow'))
-            else:
-                click.echo(click.style("Invalid choice.", fg='red'))
-        except (ValueError, IndexError):
-            click.echo(click.style("Invalid input.", fg='red'))
-        return
-
-    # If API returns a single, unambiguous result.
-    final_title = online_results.get('title', search_term)
-    final_year = online_results.get('year')
-    if final_year:
-        _display_and_add_flow(final_title, final_year)
-    else:
-        click.echo(click.style(f"Could not determine a precise year for '{query}'. Please be more specific.", fg='yellow'))
-
 def display_movie_details(movie_data):
-    """A consistent helper to display movie details from a dict."""
+    """A consistent helper to display movie details from a dictionary."""
     import textwrap
     click.echo(click.style(f"\n🎬 {movie_data['title']} ({movie_data['year']})", bold=True, fg='cyan'))
 
-    # We check for a rating that is not None and greater than 0.
+    # Display User Rating if it exists
     user_rating = movie_data.get('user_rating')
     if user_rating and user_rating > 0:
         rating_stars = "⭐" * user_rating
-        # Add padding if the rating is less than 10 to keep alignment
         padding = " " * (10 - user_rating)
         click.echo(click.style(f"  Your Rating: {rating_stars}{padding} ({user_rating}/10)", fg='yellow'))
+    
+    # Display archive status for online lookups
+    if 'in_archive' in movie_data:
+        status = "In your archive" if movie_data['in_archive'] else "Not in your archive"
+        color = "green" if movie_data['in_archive'] else "yellow"
+        click.echo(click.style(f"  Status:      {status}", fg=color))
 
     click.echo("-" * (len(movie_data['title']) + len(str(movie_data['year'])) + 5))
 
@@ -628,6 +540,136 @@ def display_movie_details(movie_data):
         click.echo(plot_wrapped)
     
     click.echo("")
+
+def _fetch_and_add_flow(title, year):
+    """
+    Helper to fetch from API, display details, and then handle
+    either adding a new movie OR updating an existing one.
+    """
+    from . import core, database
+    
+    click.echo(f"Fetching details for '{title} ({year})' from TMDb...")
+    details = core.fetch_movie_details_from_api(title, year)
+    if details.get("Error"):
+        click.echo(click.style(f"Error: {details['Error']}", fg='red'))
+        return
+
+    is_in_archive = database.get_movie_details(title, year) is not None
+    
+    display_details = {'title': title, 'year': year, **details, 'in_archive': is_in_archive}
+    display_movie_details(display_details)
+
+    if not is_in_archive:
+        # If it's a new movie, ask to add it using inquirer.
+        questions = [inquirer.Confirm('confirm', message="Do you want to add this movie to your archive?", default=True)]
+        answers = inquirer.prompt(questions)
+        if answers and answers['confirm']:
+            database.add_movie(title, year)
+            database.update_movie_details(title, year, details)
+            click.echo(click.style(f"Movie '{title} ({year})' added to your archive.", fg='green'))
+        else:
+            click.echo("Movie was not added to the archive.")
+    else:
+        # If the movie already exists, we just update it. No need to ask.
+        database.update_movie_details(title, year, details)
+        click.echo(click.style(f"Details for '{title} ({year})' have been updated in your archive.", fg='green'))
+
+# In popcorn_archives/cli.py
+
+@cli.command(name='info')
+@click.argument('query')
+def smart_info(query):
+    """
+    Smartly finds a movie and displays its details.
+    Searches your local archive first, then online. Handles ambiguity.
+    """
+    from . import core, database
+    import textwrap
+    
+    def _display_local_info(movie_row):
+        """Helper for local movies that offers to fetch missing details."""
+
+        movie_dict = dict(movie_row)
+
+        if not movie_dict.get('plot'):
+            click.echo(click.style(f"Details for '{movie_dict['title']} ({movie_dict['year']})' are missing.", fg='yellow'))
+            
+            questions = [inquirer.Confirm('confirm', message="Do you want to fetch them now from TMDb?", default=True)]
+            answers = inquirer.prompt(questions)
+            
+            if answers and answers['confirm']:
+                _fetch_and_add_flow(movie_dict['title'], movie_dict['year'])
+            return
+        
+        display_movie_details(movie_dict)
+
+    title, year = core.parse_movie_title(query)
+    
+    # Case 1: Precise "Title YYYY" query.
+    if title and year:
+        movie = database.get_movie_details(title, year)
+        if movie:
+            _display_local_info(movie) # The helper now handles the conversion
+        else:
+            click.echo(f"Movie not found locally.")
+            _fetch_and_add_flow(title, year)
+        return
+
+    # Case 2: Partial query.
+    search_term = query.strip()
+    click.echo(f"Searching local archive for movies matching '{search_term}'...")
+    local_results = database.search_movie(search_term)
+
+    if len(local_results) == 1:
+        movie_row = local_results[0]
+        click.echo(f"Found one match: {movie_row['title']} ({movie_row['year']}).")
+        full_details_row = database.get_movie_details(movie_row['title'], movie_row['year'])
+        if full_details_row:
+             _display_local_info(full_details_row)
+        return
+    
+    if len(local_results) > 1:
+        click.echo("Found multiple matches in your archive.")
+        choices = [f"{m['title']} ({m['year']})" for m in local_results]
+        questions = [inquirer.List('choice', message="Please choose one:", choices=choices)]
+        answers = inquirer.prompt(questions)
+        
+        if answers:
+            chosen_title, chosen_year = core.parse_movie_title(answers['choice'])
+            full_details_row = database.get_movie_details(chosen_title, chosen_year)
+            if full_details_row:
+                _display_local_info(full_details_row)
+        return
+
+    # Case 3: Nothing found locally, search online.
+    click.echo("No local matches found. Searching online on TMDb...")
+    online_results = core.fetch_movie_details_from_api(search_term)
+    
+    if online_results.get("Error"):
+        click.echo(click.style(online_results["Error"], fg='red')); return
+    
+    if online_results.get("MultipleResults"):
+        click.echo("Found multiple potential matches online.")
+        choices = [f"{m['title']} ({m['year']})" for m in online_results["MultipleResults"]]
+        questions = [inquirer.List('choice', message="Which one did you mean?", choices=choices)]
+        answers = inquirer.prompt(questions)
+        
+        if answers:
+            chosen_title, chosen_year_str = core.parse_movie_title(answers['choice'])
+            try:
+                chosen_year = int(chosen_year_str)
+                _fetch_and_add_flow(chosen_title, chosen_year)
+            except (ValueError, TypeError):
+                click.echo(click.style(f"Could not parse year for '{chosen_title}'.", fg='yellow'))
+        return
+
+    # If API returns a single, unambiguous result.
+    final_title = online_results.get('title', search_term)
+    final_year = online_results.get('year')
+    if final_year:
+        _fetch_and_add_flow(final_title, final_year)
+    else:
+        click.echo(click.style(f"Could not find a specific movie for '{query}'. Please be more precise.", fg='yellow'))
 
 @cli.command()
 @click.argument('genre_name', required=False)
@@ -674,71 +716,91 @@ def genre(genre_name):
 
 @cli.command()
 @click.argument('filepath', type=click.Path(exists=True, dir_okay=False), required=False)
-@click.option('--force', is_flag=True, help="Force update for all movies, ignoring the default logic.")
-def update(filepath, force):
-    """
-    Fetches details for movies from TMDb.
+@click.option('--force', is_flag=True, help="Force update for all movies.")
+@click.option('--cleanup', is_flag=True, help="Scan for and merge duplicate entries before updating.")
+@click.option('--repair', is_flag=True, help="Interactively find and fix movies with suspicious data.")
+def update(filepath, force, cleanup, repair):
+    """Fetches details for movies and provides maintenance options."""
+    from . import core, database
 
-    - By default, it only fetches for movies with missing details.
-    - If a FILEPATH is provided, it only updates movies from that file.
-    - The --force flag updates ALL movies in the archive.
-    """
-    from . import core # Lazy loading
-    
+    if cleanup:
+        click.echo("Scanning database for duplicate entries...")
+        merged_count = database.cleanup_duplicates()
+        if merged_count > 0:
+            click.echo(click.style(f"Successfully merged {merged_count} duplicate movies.", fg='green'))
+        else:
+            click.echo("No duplicates found.")
+        
+        if not any([filepath, force, repair]):
+            click.echo("Cleanup complete.")
+            return
+        click.echo("Cleanup finished. Continuing with other operations...\n")
+
     if not config_manager.get_api_key():
         click.echo(click.style("Error: API key not configured.", fg='red'))
         return
 
-    # --- NEW: Prioritized Logic ---
-    if filepath:
-        # Priority 1: Update from a file.
+    movies_to_update = []
+    
+    if repair:
+        click.echo("Searching for movies with suspicious data to repair...")
+        suspicious_movies = database.get_suspicious_movies()
+        if not suspicious_movies:
+            click.echo(click.style("No suspicious movies found.", fg='green'))
+            return
+
+        click.echo(click.style(f"Found {len(suspicious_movies)} potentially problematic movies.", bold=True))
+        
+        movies_to_fix_names = []
+        for name, reason in suspicious_movies.items():
+            questions = [inquirer.Confirm('confirm', message=f"Fix '{name}'? (Reason: {reason})", default=True)]
+            answers = inquirer.prompt(questions)
+            if answers and answers['confirm']:
+                movies_to_fix_names.append(name)
+        
+        if not movies_to_fix_names:
+            click.echo("No movies selected for repair. Aborting.")
+            return
+        
+        movies_to_update = database.get_movies_by_name_list(movies_to_fix_names)
+
+    elif filepath:
         click.echo(f"Updating movies from list: {filepath}...")
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 movie_name_list = [line.strip() for line in f if line.strip()]
-            
             movies_to_update = database.get_movies_by_name_list(movie_name_list)
-            
-            if not movies_to_update:
-                click.echo(click.style("No valid movies from the list were found in your archive.", fg='yellow'))
-                return
         except Exception as e:
-            click.echo(click.style(f"Error reading file: {e}", fg='red'))
-            return
+            click.echo(click.style(f"Error reading file: {e}", fg='red')); return
             
     elif force:
-        # Priority 2: Force update all movies.
         movies_to_update = database.get_all_movies()
         click.echo("Fetching details for all movies (force update)...")
-    else:
-        # Default: Update movies with missing details.
+    
+    else: # Default case
         movies_to_update = database.get_movies_missing_details()
         click.echo("Searching for movies with missing details to update...")
 
     if not movies_to_update:
-        click.echo(click.style("No movies need updating based on the selected mode.", fg='green'))
+        click.echo(click.style("No movies need updating for the selected mode.", fg='green'))
         return
 
+    # --- TQDM Loop and Final Report (this part was already correct) ---
     updated_count = 0
     failed_movies = []
-    
     try:
-        with tqdm(total=len(movies_to_update), desc="Updating movies") as pbar:
-            for movie in movies_to_update:
+        with tqdm(movies_to_update, desc="Updating movies") as pbar:
+            for movie in pbar:
                 title, year = movie['title'], movie['year']
-                
                 pbar.set_description(f"Fetching: {title[:30]}")
-                
                 details = core.fetch_movie_details_from_api(title, year)
-                
                 if not details.get("Error"):
                     database.update_movie_details(title, year, details)
                     updated_count += 1
                 else:
                     failed_movies.append((f"{title} ({year})", details['Error']))
-                
                 pbar.update(1)
-                time.sleep(0.1) 
+                time.sleep(0.1)
     except KeyboardInterrupt:
         click.echo(click.style("\n\nOperation aborted by user.", fg='yellow'))
     finally:
@@ -746,7 +808,6 @@ def update(filepath, force):
         click.echo(click.style(f"\n--- Update Summary ---", bold=True))
         click.echo(click.style(f"  Processed:    {total_processed}/{len(movies_to_update)}", fg='cyan'))
         click.echo(click.style(f"  Successfully updated: {updated_count}", fg='green'))
-        
         if failed_movies:
             failed_count = len(failed_movies)
             click.echo(click.style(f"  Failed to update:   {failed_count}", fg='red'))

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2025-08-23
+
+### Added
+- **Database Cleanup & Repair**: The `update` command now includes `--cleanup` and `--repair` options to merge duplicates and interactively fix movies with suspicious data.
+
+### Fixed
+- A critical bug where `update` would not correctly save all fetched data due to a key mismatch.
+- A logic error where the `update` command would fail to identify all movies with incomplete data.
+- Multiple bugs related to testing interactive commands, API calls, and database operations.
+
+
 ## [3.1.0] - 2025-08-23
 
 ### Changed
