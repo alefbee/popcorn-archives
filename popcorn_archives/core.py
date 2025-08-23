@@ -78,37 +78,36 @@ BASE_URL = "https://api.themoviedb.org/3"
 
 def fetch_movie_details_from_api(title, year=None):
     """
-    Fetches detailed movie information from TMDb.
-    If year is provided, it helps narrow down the search.
+    Fetches detailed movie information from TMDb, always prioritizing popularity.
     """
     api_key = config_manager.get_api_key()
     if not api_key:
-        return {"Error": "API key not configured. Use 'poparch config --key YOUR_KEY' to set it."}
-
-    headers = {"accept": "application/json"}
+        return {"Error": "API key not configured."}
     
+    headers = {"accept": "application/json"}
     try:
-        # Step 1: Search for the movie to get its ID
         search_params = {'api_key': api_key, 'query': title}
-        if year:
-            search_params['year'] = year
-        search_response = requests.get(f"{BASE_URL}/search/movie", params=search_params, headers=headers, timeout=5)
+        search_response = requests.get(f"{BASE_URL}/search/movie", params=search_params, headers=headers, timeout=10)
         search_response.raise_for_status()
         search_data = search_response.json()
 
         if not search_data.get('results'):
-            error_msg = f"Movie '{title}'"
-            if year: error_msg += f" ({year})"
-            error_msg += " not found on TMDb."
-            return {"Error": error_msg}
+            return {"Error": f"Movie '{title}' not found on TMDb."}
 
         sorted_results = sorted(search_data['results'], key=lambda r: r.get('popularity', 0), reverse=True)
         
-        # If a year was provided, try to find an exact year match within the sorted results
+        best_match = None
         if year:
-            best_match = next((r for r in sorted_results if str(year) in r.get('release_date', '')), sorted_results[0])
-        else:
+            # If a year is provided, find the most popular match for that year.
+            best_match = next((r for r in sorted_results if str(year) in r.get('release_date', '')), None)
+        
+        # If no year-specific match was found, or no year was provided, use the most popular overall.
+        if not best_match:
             best_match = sorted_results[0]
+        
+        # If multiple results were found for a broad search, let the user choose.
+        if len(sorted_results) > 1 and not year:
+             return {"MultipleResults": [{'title': r.get('title'), 'year': r.get('release_date', 'N/A')[:4]} for r in sorted_results[:5]]}
         
         movie_id = best_match['id']
         
@@ -154,7 +153,7 @@ def fetch_movie_details_from_api(title, year=None):
     except requests.exceptions.RequestException as e:
         return {"Error": f"Network/API Error: {e}"}
     except Exception as e:
-        return {"Error": f"An unexpected error occurred: {e}"}
+        return {"Error": f"API request failed: {e}"}
     
 def process_letterboxd_zip(filepath):
     """

@@ -718,8 +718,7 @@ def genre(genre_name):
 @click.argument('filepath', type=click.Path(exists=True, dir_okay=False), required=False)
 @click.option('--force', is_flag=True, help="Force update for all movies.")
 @click.option('--cleanup', is_flag=True, help="Scan for and merge duplicate entries before updating.")
-@click.option('--repair', is_flag=True, help="Interactively find and fix movies with suspicious data.")
-def update(filepath, force, cleanup, repair):
+def update(filepath, force, cleanup):
     """Fetches details for movies and provides maintenance options."""
     from . import core, database
 
@@ -731,7 +730,7 @@ def update(filepath, force, cleanup, repair):
         else:
             click.echo("No duplicates found.")
         
-        if not any([filepath, force, repair]):
+        if not any([filepath, force]):
             click.echo("Cleanup complete.")
             return
         click.echo("Cleanup finished. Continuing with other operations...\n")
@@ -741,30 +740,8 @@ def update(filepath, force, cleanup, repair):
         return
 
     movies_to_update = []
-    
-    if repair:
-        click.echo("Searching for movies with suspicious data to repair...")
-        suspicious_movies = database.get_suspicious_movies()
-        if not suspicious_movies:
-            click.echo(click.style("No suspicious movies found.", fg='green'))
-            return
 
-        click.echo(click.style(f"Found {len(suspicious_movies)} potentially problematic movies.", bold=True))
-        
-        movies_to_fix_names = []
-        for name, reason in suspicious_movies.items():
-            questions = [inquirer.Confirm('confirm', message=f"Fix '{name}'? (Reason: {reason})", default=True)]
-            answers = inquirer.prompt(questions)
-            if answers and answers['confirm']:
-                movies_to_fix_names.append(name)
-        
-        if not movies_to_fix_names:
-            click.echo("No movies selected for repair. Aborting.")
-            return
-        
-        movies_to_update = database.get_movies_by_name_list(movies_to_fix_names)
-
-    elif filepath:
+    if filepath:
         click.echo(f"Updating movies from list: {filepath}...")
         try:
             with open(filepath, 'r', encoding='utf-8') as f:

@@ -476,33 +476,3 @@ def cleanup_duplicates():
         
         conn.commit()
         return total_merged
-    
-def get_suspicious_movies():
-    """
-    Finds movies with potentially incorrect or incomplete data and returns them
-    categorized by the reason they are suspicious.
-    """
-    suspicious_movies = {}
-    
-    with get_db_connection() as conn:
-        # Reason 1: Unusually short runtime for a feature film
-        sql_short = "SELECT title, year FROM movies WHERE runtime > 0 AND runtime < 40"
-        for row in conn.execute(sql_short).fetchall():
-            key = f"{row['title']} ({row['year']})"
-            suspicious_movies[key] = "Unusually short runtime"
-
-        # Reason 2: Missing key information like director or genre
-        sql_missing = "SELECT title, year FROM movies WHERE (director IS NULL OR genre IS NULL) AND plot IS NOT NULL"
-        for row in conn.execute(sql_missing).fetchall():
-            key = f"{row['title']} ({row['year']})"
-            if key not in suspicious_movies: # Don't overwrite a previous reason
-                suspicious_movies[key] = "Missing director or genre"
-
-        # Reason 3: Default "N/A" values stored
-        sql_na = "SELECT title, year FROM movies WHERE director = 'N/A' OR genre = 'N/A'"
-        for row in conn.execute(sql_na).fetchall():
-            key = f"{row['title']} ({row['year']})"
-            if key not in suspicious_movies:
-                suspicious_movies[key] = "Default 'N/A' data stored"
-                
-    return suspicious_movies

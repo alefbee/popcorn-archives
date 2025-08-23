@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.2] - 2025-08-23
+
+### Fixed
+- **Database Cleanup**: Resolved a critical `UNIQUE constraint failed` error in the `cleanup_duplicates` function by correcting the order of DELETE and UPDATE operations. This ensures that the cleanup process is robust and safe.
+
+### Removed
+- **`--repair` Feature**: The experimental `--repair` option has been removed from the `update` command to simplify the application's focus and reduce complexity. The core logic for finding the best movie match in the API has been improved, making this feature redundant.
+
 ## [3.2.1] - 2025-08-23
 
 ### Fixed
