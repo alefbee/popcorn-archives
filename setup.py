@@ -2,9 +2,9 @@ from setuptools import setup, find_packages
 
 setup(
     name='popcorn-archives',
-    version='3.0.0',
+    version='3.1.0',
     packages=find_packages(),
-    license="MIT",
+    license="GPL-3.0-or-later",
     include_package_data=True,
     install_requires=[
         'Click',
