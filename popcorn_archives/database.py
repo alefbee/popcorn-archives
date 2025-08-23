@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import click
+from collections import Counter
 
 APP_NAME = "PopcornArchives"
 APP_DIR = click.get_app_dir(APP_NAME)
@@ -352,3 +353,58 @@ def get_movies_by_name_list(name_list):
         sql = f"SELECT title, year FROM movies WHERE {placeholders}"
         cursor = conn.execute(sql, tuple(params))
         return cursor.fetchall()
+    
+def get_top_items_from_column(column_name, limit=5):
+    """
+    A generic function to get the most common items from a comma-separated column.
+    Used for genres, directors, cast, and keywords.
+    """
+    with get_db_connection() as conn:
+        # We need to fetch all non-empty rows for the given column.
+        sql = f'SELECT "{column_name}" FROM movies WHERE "{column_name}" IS NOT NULL'
+        cursor = conn.execute(sql)
+        
+        # Counter is a powerful tool for counting items in a list.
+        item_counter = Counter()
+        
+        for row in cursor.fetchall():
+            # Split the comma-separated string into individual items.
+            items = [item.strip() for item in row[column_name].split(',')]
+            # Update the counter with the items from this row.
+            item_counter.update(items)
+            
+        # Return the N most common items and their counts.
+        return item_counter.most_common(limit)
+
+def get_extreme_runtime_movies():
+    """Finds the movies with the minimum and maximum runtime."""
+    with get_db_connection() as conn:
+        # We can do this in a single query for efficiency.
+        sql = """
+            SELECT title, year, runtime FROM movies
+            WHERE runtime = (SELECT MIN(runtime) FROM movies WHERE runtime > 0) OR
+                  runtime = (SELECT MAX(runtime) FROM movies)
+            ORDER BY runtime ASC
+        """
+        cursor = conn.execute(sql)
+        results = cursor.fetchall()
+        
+        if len(results) == 0:
+            return None, None
+        elif len(results) == 1: # Happens if the shortest and longest are the same movie
+            return results[0], results[0]
+        else:
+            return results[0], results[-1] # Shortest is first, longest is last
+
+def get_top_decade():
+    """Finds the single decade with the most movies."""
+    with get_db_connection() as conn:
+        sql = """
+            SELECT (year / 10) * 10 AS decade, COUNT(id) as movie_count
+            FROM movies
+            GROUP BY decade
+            ORDER BY movie_count DESC
+            LIMIT 1
+        """
+        cursor = conn.execute(sql)
+        return cursor.fetchone()

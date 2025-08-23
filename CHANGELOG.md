@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.2] - 2025-08-23
+
+### Changed
+- **Redesigned `stats` Dashboard**: The `stats` command output has been completely redesigned for a cleaner, more professional, and more readable user experience. It now uses a minimal color palette, improved spacing, and better alignment to present the archive statistics and user taste profile in a beautiful dashboard format.
+
 ## [2.3.1] - 2025-08-18
 
 ### Fixed

@@ -136,7 +136,7 @@ Popcorn Archives is actively being developed. Here's a look at some of the excit
 ### Core Enhancements & Power Features
 -   [x] **Advanced Search & Filtering**:
     -   Implement a powerful `search` command that can filter by multiple criteria at once (e.g., by actor, director, keyword).
--   [ ] **Personalized Stats Dashboard**:
+-   [x] **Personalized Stats Dashboard**:
     -   Enhance the `stats` command to provide insights into the user's movie taste, such as top favorite genres and most frequent topics (by processing keywords).
 -   [ ] **JSON Output for Scripting**:
     -   Add a `--json` flag to commands like `info`, `search`, and `stats` to output data in a machine-readable JSON format, allowing `poparch` to be used in scripts.

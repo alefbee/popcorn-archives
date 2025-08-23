@@ -23,61 +23,68 @@ def cli():
 
 @cli.command()
 def stats():
-    """Displays beautiful and interesting statistics about the movie archive."""
+    """Displays a beautiful and personalized dashboard of your movie archive."""
+    from . import database
+    
     total_count = database.get_total_movies_count()
     if total_count == 0:
         click.echo("The archive is empty. Add some movies first!")
         return
-        
-    click.echo(click.style("\n🎬 Popcorn Archives Dashboard", bold=True, fg='cyan'))
-    
-    click.echo(click.style("\nSummary", bold=True))
-    click.echo("-------")
-    click.echo(f"Total Movies: {click.style(str(total_count), fg='green', bold=True)}")
 
+    # --- Header ---
+    click.echo(click.style("\n🎬 Poparch Archive Dashboard", bold=True, fg='cyan'))
+
+    # --- Section 1: Archive Overview ---
+    click.echo(click.style("\n--- Archive Overview ---", bold=True))
+    click.echo(f"  {'Total Movies:':<18} {click.style(str(total_count), fg='green', bold=True)}")
+    
     watched_stats = database.get_watched_stats()
     if watched_stats and watched_stats[0] is not None:
         watched_count, unwatched_count = watched_stats
-        click.echo(f"  - Watched:   {watched_count}")
-        click.echo(f"  - Unwatched: {unwatched_count}")
+        click.echo(f"  {'- Watched:':<17} {watched_count}")
+        click.echo(f"  {'- Unwatched:':<17} {unwatched_count}")
+    
+    click.echo("") # Add spacing
     
     oldest = database.get_oldest_movie()
     newest = database.get_newest_movie()
-    
     if oldest and newest:
+        click.echo(f"  {'Oldest Movie:':<18} {oldest[0]['title']} ({oldest[0]['year']})")
+        click.echo(f"  {'Newest Movie:':<18} {newest[0]['title']} ({newest[0]['year']})")
         time_span = newest[0]['year'] - oldest[0]['year']
-        click.echo(f"Time Span:    Covering {click.style(str(time_span), bold=True)} years of cinema")
-        click.echo(f"Oldest Movie: {oldest[0]['title']} ({oldest[0]['year']})")
-        click.echo(f"Newest Movie: {newest[0]['title']} ({newest[0]['year']})")
-    
-    click.echo(click.style("\nDecade Distribution", bold=True))
-    click.echo("-------------------")
-    
-    decade_dist = database.get_decade_distribution()
-    if decade_dist:
-        max_count = decade_dist[0]['movie_count']
-        BAR_CHAR = "█"
-        MAX_BAR_WIDTH = 40
-        
-        COLORS = ['cyan', 'magenta', 'yellow', 'blue']
+        click.echo(f"  {'Time Span:':<18} Covering {time_span} years of cinema")
 
-        for i, row in enumerate(decade_dist):
-            decade = int(row['decade'])
-            count = row['movie_count']
-            
-            decade_label = f"{decade}s"
-            formatted_label = f"{decade_label: <8}"
-            
-            bar_color = COLORS[i % len(COLORS)]
-            bar_length = int((count / max_count) * MAX_BAR_WIDTH) if max_count > 0 else 0
-            bar = BAR_CHAR * bar_length
-            
-            click.echo(
-                f"  {click.style(formatted_label, bold=True)}"
-                f"| {click.style(bar, fg=bar_color)} {count}"
-            )
-    else:
-        click.echo("Not enough data for decade distribution.")
+    # --- Section 2: Your Taste Profile ---
+    click.echo(click.style("\n--- Your Taste Profile ---", bold=True))
+
+    def print_top_list(title, items, is_ranked=True):
+        if not items: return
+        click.echo(f"\n  {title}")
+        # Create a separator line that matches the title length
+        separator = "─" * len(title)
+        click.echo(click.style(f"  {separator}", fg='bright_black'))
+
+        for i, (name, count) in enumerate(items, 1):
+            prefix = f"{i}." if is_ranked else "-"
+            # Use fixed-width formatting for alignment
+            click.echo(f"    {prefix:<3} {name:<25} ({count} movies)")
+
+    print_top_list("Top Genres", database.get_top_items_from_column('genre', limit=3))
+    print_top_list("Favorite Directors", database.get_top_items_from_column('director', limit=3), is_ranked=False)
+    print_top_list("Most Frequent Actors", database.get_top_items_from_column('cast', limit=3), is_ranked=False)
+    print_top_list("Favorite Topics", database.get_top_items_from_column('keywords', limit=3))
+
+    # --- Section 3: Hidden Gems & Fun Facts ---
+    click.echo(click.style("\n--- Hidden Gems & Fun Facts ---", bold=True))
+    
+    shortest, longest = database.get_extreme_runtime_movies()
+    if shortest and longest:
+        click.echo(f"  {'Marathon Movie:':<20} {longest['title']} ({longest['year']}) - {longest['runtime']} min")
+        click.echo(f"  {'Shortest Film:':<20} {shortest['title']} ({shortest['year']}) - {shortest['runtime']} min")
+
+    top_decade = database.get_top_decade()
+    if top_decade:
+        click.echo(f"  {'Your Golden Decade:':<20} The {int(top_decade['decade'])}s (with {top_decade['movie_count']} movies)")
     
     click.echo("")
 
