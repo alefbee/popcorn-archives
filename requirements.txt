@@ -9,13 +9,15 @@ iniconfig==2.1.0
 inquirer==3.4.1
 packaging==25.0
 pluggy==1.6.0
--e git+https://github.com/alefbee/popcorn-archives.git@ed42bdbd141e91765d998e883419eb95619c8099#egg=popcorn_archives
+-e git+https://github.com/alefbee/popcorn-archives.git@abfd2e352eb3859a134cc927a3cb8744de8681ba#egg=popcorn_archives
 Pygments==2.19.2
 pytest==8.4.1
 pytest-mock==3.14.1
+RapidFuzz==3.13.0
 readchar==4.2.1
 requests==2.32.4
 runs==1.2.2
+thefuzz==0.22.1
 tqdm==4.67.1
 urllib3==2.5.0
 wcwidth==0.2.13

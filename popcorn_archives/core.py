@@ -11,26 +11,16 @@ def parse_movie_title(name):
     """
     Parses the movie title and year from a string.
     Supports "Title YYYY" and "Title (YYYY)" formats, ignoring trailing metadata.
+    Returns (None, None) if no valid year is found.
     """
     name = name.strip()
-
-    match = re.match(r'^(.*) \((\d{4})\)', name)
+    # This regex is more robust and handles both formats
+    match = re.match(r'^(.*?)[\s\(](\d{4})[\)]?.*$', name)
     if match:
         title = match.group(1).strip().title()
         year = int(match.group(2))
         if 1800 < year < 2100:
             return title, year
-
-    try:
-        parts = name.split(' ')
-        if len(parts) > 1:
-            year = int(parts[-1])
-            if 1800 < year < 2100:
-                title = ' '.join(parts[:-1]).strip().title()
-                return title, year
-    except (ValueError, IndexError):
-        pass
-
     return None, None
 
 def scan_movie_folders(path):

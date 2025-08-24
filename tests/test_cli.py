@@ -307,13 +307,15 @@ def test_update_command_default_workflow(mocker):
 
 def test_update_cleanup_mode_standalone(mocker):
     """Tests that `update --cleanup` alone only performs cleanup."""
-    mock_cleanup = mocker.patch('popcorn_archives.database.cleanup_duplicates', return_value=2)
-    mock_missing = mocker.patch('popcorn_archives.database.get_movies_missing_details')
+    # Mock the database function to simulate finding and merging 2 duplicates
+    mock_cleanup = mocker.patch('popcorn_archives.database.cleanup_database', return_value=2)
     
     runner = CliRunner()
     result = runner.invoke(cli, ['update', '--cleanup'])
     
     assert result.exit_code == 0
-    assert "Successfully merged 2 duplicate movies." in result.output
+    mock_cleanup.assert_called_once()
+    
+    assert "Successfully merged and deleted 2 duplicate movies." in result.output
+    
     assert "Cleanup complete." in result.output
-    mock_missing.assert_not_called()

@@ -177,7 +177,7 @@ Fetches missing details for movies in your archive from TMDb. This command has t
     poparch update failed.txt
     ```
 
--   **Cleanup Mode:** Scans for and merges duplicate entries before updating.
+-   **Cleanup Mode:** Find and merge duplicate or similar entries before updating.
     `poparch update --cleanup`
 
 -   **Force Mode (For Refreshing All Data):**

@@ -3,6 +3,7 @@ import os
 import click
 from collections import Counter
 from . import logger as app_logger
+from thefuzz import fuzz
 
 APP_NAME = "PopcornArchives"
 APP_DIR = click.get_app_dir(APP_NAME)
@@ -450,37 +451,70 @@ def get_highest_rated_movie():
         # We only return the first one if there are multiple
         return cursor.fetchone(), max_rating
 
-def cleanup_duplicates():
+def cleanup_database(threshold=85):
     """
-    Finds and merges duplicate movies (same title, same year, different case).
-    Returns the number of duplicates that were merged.
+    Finds and interactively merges both exact (case-insensitive) and
+    fuzzily similar title duplicates.
     """
+    import inquirer
+    
     with get_db_connection() as conn:
-        # Find groups of potential duplicates (case-insensitive)
-        sql_find = "SELECT LOWER(title) as l_title, year FROM movies GROUP BY l_title, year HAVING COUNT(id) > 1"
-        cursor = conn.execute(sql_find)
-        duplicate_groups = cursor.fetchall()
-
-        total_merged = 0
-        for group in duplicate_groups:
-            # For each group, get all the individual records, ordered by ID
-            sql_get_records = "SELECT id, title FROM movies WHERE LOWER(title) = ? AND year = ? ORDER BY id ASC"
-            records = conn.execute(sql_get_records, (group['l_title'], group['year'])).fetchall()
-
-            if not records: continue
-
-            # The first record is the one we want to keep. The rest will be deleted.
+        # Step 1: Handle EXACT case-insensitive duplicates automatically
+        sql_exact = "SELECT LOWER(title) as l_title, year FROM movies GROUP BY l_title, year HAVING COUNT(id) > 1"
+        exact_duplicates = conn.execute(sql_exact).fetchall()
+        
+        merged_count = 0
+        for group in exact_duplicates:
+            records = conn.execute("SELECT id, title FROM movies WHERE LOWER(title) = ? AND year = ? ORDER BY id ASC", (group['l_title'], group['year'])).fetchall()
             record_to_keep = records[0]
             ids_to_delete = [rec['id'] for rec in records[1:]]
-            
             if ids_to_delete:
-                # 1. Delete the redundant records
                 placeholders = ','.join('?' for _ in ids_to_delete)
                 conn.execute(f"DELETE FROM movies WHERE id IN ({placeholders})", tuple(ids_to_delete))
-                total_merged += len(ids_to_delete)
-
-            # 2. Now that duplicates are gone, safely update the remaining record to the standard case
-            conn.execute("UPDATE movies SET title = ? WHERE id = ?", (record_to_keep['title'].title(), record_to_keep['id']))
+                conn.execute("UPDATE movies SET title = ? WHERE id = ?", (record_to_keep['title'].title(), record_to_keep['id']))
+                merged_count += len(ids_to_delete)
         
-        conn.commit()
+        if merged_count > 0:
+            click.echo(click.style(f"Automatically merged {merged_count} exact duplicate entries.", fg='blue'))
+
+        # Step 2: Find and interactively merge FUZZILY similar titles
+        all_movies = conn.execute("SELECT id, title, year FROM movies").fetchall()
+        potential_duplicates = {}
+        # This is a bit slow (O(n^2)), but robust for typical library sizes.
+        for i in range(len(all_movies)):
+            for j in range(i + 1, len(all_movies)):
+                m1, m2 = all_movies[i], all_movies[j]
+                if m1['year'] == m2['year'] and fuzz.ratio(m1['title'].lower(), m2['title'].lower()) > threshold:
+                    # Grouping by a sorted tuple of IDs to uniquely identify a pair
+                    key = tuple(sorted((m1['id'], m2['id'])))
+                    if key not in potential_duplicates:
+                        potential_duplicates[key] = [m1, m2]
+        
+        if not potential_duplicates:
+            if merged_count == 0: # Only say this if nothing at all was found
+                click.echo("No duplicates or similar titles found.")
+            return merged_count
+
+        deleted_count = 0
+        click.echo(click.style(f"\nFound {len(potential_duplicates)} groups of movies with similar titles:", bold=True))
+
+        for key, movies in potential_duplicates.items():
+            choices = [f"{m['title']} ({m['year']})" for m in movies]
+            questions = [ inquirer.List('keep', message=f"Ambiguous titles found. Which version do you want to keep?", choices=choices) ]
+            answers = inquirer.prompt(questions)
+
+            if answers:
+                chosen_str = answers['keep']
+                record_to_keep = next((m for m in movies if f"{m['title']} ({m['year']})" == chosen_str), None)
+                records_to_delete = [m for m in movies if m['id'] != record_to_keep['id']]
+                
+                if records_to_delete:
+                    ids_to_delete = [m['id'] for m in records_to_delete]
+                    placeholders = ','.join('?' for _ in ids_to_delete)
+                    conn.execute(f"DELETE FROM movies WHERE id IN ({placeholders})", tuple(ids_to_delete))
+                    deleted_count += len(ids_to_delete)
+        
+        total_merged = merged_count + deleted_count
+        if total_merged > 0:
+            conn.commit()
         return total_merged

@@ -277,14 +277,14 @@ def import_data(filepath, letterboxd):
 
 
 @cli.command()
-@click.argument('title_query', required=False)
-@click.option('--actor', help="Filter movies by an actor's name (case-insensitive).")
-@click.option('--director', help="Filter movies by a director's name (case-insensitive).")
-@click.option('--keyword', help="Filter movies by a specific keyword (case-insensitive).")
-@click.option('--collection', help="Filter movies by a collection or franchise (case-insensitive).")
-@click.option('--year', '-y', type=int, help="Filter by a specific year.")
-@click.option('--decade', '-d', type=int, help="Filter by a specific decade (e.g., 1990).")
-def search(title_query, actor, director, keyword, collection, year, decade):
+@click.argument('query', required=False)
+@click.option('--actor', help="Filter by actor's name.")
+@click.option('--director', help="Filter by director's name.")
+@click.option('--keyword', help="Filter by a keyword.")
+@click.option('--collection', help="Filter by a collection.")
+@click.option('--year', '-y', 'year_filter', type=int, help="Filter by a specific year.")
+@click.option('--decade', '-d', 'decade_filter', type=int, help="Filter by a specific decade.")
+def search(query, actor, director, keyword, collection, year_filter, decade_filter):
     """
     Performs an advanced search of your local movie archive.
 
@@ -302,26 +302,36 @@ def search(title_query, actor, director, keyword, collection, year, decade):
       - Find all of Tom Hanks' movies with 'Road' in the title:
         $ poparch search "Road" --actor "Tom Hanks"
     """
+    from . import core
+
+    # --- FINAL FIX for Smart Query Parsing ---
+    title_query = query
+    if query and not year_filter:
+        parsed_title, parsed_year = core.parse_movie_title(query)
+        if parsed_year:
+            title_query = parsed_title
+            year_filter = parsed_year
+
     # Sanitize the main query input
     if title_query:
         title_query = title_query.strip()
     
     # --- Input Validation ---
-    if decade and decade % 10 != 0:
+    if decade_filter and decade_filter % 10 != 0:
         click.echo(click.style("Error: Decade must be a valid start year (e.g., 1980, 1990).", fg='red'))
         return
     
     # Check if any search criteria were provided
-    if not any([title_query, actor, director, keyword, collection, year, decade]):
+    if not any([title_query, actor, director, keyword, collection, year_filter, decade_filter]):
         click.echo("Please provide a search term or at least one filter.")
         click.echo("Try 'poparch search --help' for options.")
         return
 
     results = database.search_movies_advanced(
-        title=title_query,
-        actor=actor, director=director,
-        keyword=keyword, collection=collection,
-        year=year, decade=decade
+        title=title_query, actor=actor,
+        director=director, keyword=keyword,
+        collection=collection, year=year_filter,
+        decade=decade_filter
     )
 
     if not results:
@@ -748,19 +758,20 @@ def genre(genre_name):
 @cli.command()
 @click.argument('filepath', type=click.Path(exists=True, dir_okay=False), required=False)
 @click.option('--force', is_flag=True, help="Force update for all movies.")
-@click.option('--cleanup', is_flag=True, help="Scan for and merge duplicate entries before updating.")
+@click.option('--cleanup', is_flag=True, help="Find and merge duplicate or similar entries before updating.")
 def update(filepath, force, cleanup):
     """Fetches details for movies and provides maintenance options."""
     from . import core, database
 
     if cleanup:
-        click.echo("Scanning database for duplicate entries...")
-        merged_count = database.cleanup_duplicates()
+        click.echo("Scanning database for movies with similar titles...")
+        merged_count = database.cleanup_database()
         if merged_count > 0:
-            click.echo(click.style(f"Successfully merged {merged_count} duplicate movies.", fg='green'))
+            click.echo(click.style(f"\nSuccessfully merged and deleted {merged_count} duplicate movies.", fg='green'))
         else:
-            click.echo("No duplicates found.")
+            click.echo("No similar title duplicates found.")
         
+        # If ONLY cleanup was requested, stop here.
         if not any([filepath, force]):
             click.echo("Cleanup complete.")
             return
