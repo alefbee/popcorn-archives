@@ -9,6 +9,7 @@ from . import database
 from . import config as config_manager
 import inquirer
 import textwrap
+from . import logger as app_logger
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help'], max_content_width=120))
 @version_option(version=version("popcorn-archives"), prog_name="popcorn-archives")
@@ -22,11 +23,12 @@ def cli():
     https://github.com/alefbee/popcorn-archives/blob/main/USAGE.md
     """
     database.init_db()
+    app_logger.initialize_log_file()
+
 
 @cli.command()
 def stats():
     """Displays a beautiful and personalized dashboard of your movie archive."""
-    from . import database
     
     total_count = database.get_total_movies_count()
     if total_count == 0:
@@ -114,6 +116,7 @@ def add(name):
 
     if database.add_movie(title, year):
         click.echo(click.style(f"Movie '{title} ({year})' added successfully.", fg='green'))
+        app_logger.log_info(f"Manually added movie: '{title} ({year})'")
     else:
         click.echo(click.style(f"Movie '{title} ({year})' already exists in the archive.", fg='yellow'))
 
@@ -125,109 +128,151 @@ def safe_echo(text):
 @cli.command()
 @click.argument('path', type=click.Path(exists=True, file_okay=False))
 def scan(path):
-    """Scans a directory for movie folders to add."""
+    """
+    Scans a directory for movie folders and adds them to the archive.
+
+    This command detects sub-folders that match common movie naming formats
+    like "Title YYYY" or "Title (YYYY)". It will display a list of all
+    valid movies found and ask for confirmation before adding them.
+
+    Folders with names that do not match a valid format will be reported
+    and skipped automatically.
+
+    \b
+    Example:
+      - Scan a local directory of movies:
+        poparch scan /path/to/my/movies
+    """
+    # Lazy loading for performance and to keep other commands fast.
     from . import core
+
+    # Step 1: Scan the directory to find valid and invalid movie folders.
     valid_movies, invalid_folders = core.scan_movie_folders(path)
 
+    # Step 2: Report any folders that could not be parsed.
     if invalid_folders:
         click.echo(click.style("\nWarning: The following folders could not be parsed and will be skipped:", fg='yellow'))
         for folder in invalid_folders:
             safe_echo(f"  - {folder}")
     
     if not valid_movies:
-        click.echo("\nNo movies with a valid format were found.")
+        click.echo("\nNo movies with a valid format were found in this directory.")
         return
 
+    # Step 3: Show a preview of found movies and ask for confirmation using inquirer.
     click.echo(click.style(f"\nFound {len(valid_movies)} valid movies:", bold=True))
-    for title, year in valid_movies[:5]:
+    for title, year in valid_movies[:5]: # Show up to 5 examples
         safe_echo(f"  - {title} ({year})")
     if len(valid_movies) > 5:
         click.echo("  ...")
 
-    if click.confirm("\nDo you want to add these movies to the archive?"):
-        added_count = 0
-        skipped_count = 0
-        for title, year in tqdm(valid_movies, desc="Adding to database"):
-            if database.add_movie(title, year):
-                added_count += 1
-            else:
-                skipped_count += 1
-        
-        click.echo(click.style("\nOperation complete:", bold=True))
-        click.echo(click.style(f"  {added_count} new movies added successfully.", fg='green'))
-        if skipped_count > 0:
-            click.echo(click.style(f"  {skipped_count} movies were already in the archive.", fg='yellow'))
-    else:
-        click.echo(click.style("Operation cancelled. No movies were added to the archive.", fg='red'))
+    questions = [
+        inquirer.Confirm('confirm', 
+            message="Do you want to add these movies to your archive?", 
+            default=True)
+    ]
+    answers = inquirer.prompt(questions)
+    
+    if not answers or not answers.get('confirm'):
+        click.echo(click.style("Operation cancelled. No movies were added.", fg='red'))
+        app_logger.log_info("User cancelled scan operation.")
+        return
 
+    # Step 4: Add movies to the database with a progress bar and prepare log data.
+    added_count = 0
+    skipped_count = 0
+    added_titles = [] # FIX: Initialize the list to store names for logging.
+
+    for title, year in tqdm(valid_movies, desc="Adding to database"):
+        if database.add_movie(title, year):
+            added_count += 1
+            added_titles.append(f"'{title} ({year})'") # Append successful adds to the list.
+        else:
+            skipped_count += 1
+    
+    # Step 5: Log the successfully added movies in a detailed message.
+    if added_titles:
+        app_logger.log_info(f"Added {added_count} movies via scan: {', '.join(added_titles)}")
+    
+    # Step 6: Print the final summary report to the user.
+    click.echo(click.style("\nOperation complete:", bold=True))
+    click.echo(click.style(f"  {added_count} new movies added successfully.", fg='green'))
+    if skipped_count > 0:
+        click.echo(click.style(f"  {skipped_count} movies were already in the archive.", fg='yellow'))
 
 @cli.command(name="import")
 @click.argument('filepath', type=click.Path(exists=True))
 @click.option('--letterboxd', is_flag=True, help="Import data from a Letterboxd ZIP export.")
 def import_data(filepath, letterboxd):
     """Imports movies from a standard CSV or a Letterboxd ZIP file."""
-    from . import core, database
-    
+    from . import core
+
     if not letterboxd:
-        # --- Logic for standard CSV import (unchanged) ---
-        # ...
+        # --- FINAL: Logic for standard CSV import ---
+        click.echo(f"Importing movies from standard CSV: {filepath}")
+        movies_to_add = core.read_csv_file(filepath)
+        if not movies_to_add:
+            click.echo("No valid movies found in the CSV file."); return
+        
+        added_count, skipped_count = 0, 0
+        added_titles = []
+        for title, year in tqdm(movies_to_add, desc="Importing from CSV"):
+            if database.add_movie(title, year):
+                added_count += 1
+                added_titles.append(f"'{title} ({year})'")
+            else:
+                skipped_count += 1
+        
+        if added_titles:
+            app_logger.log_info(f"Added {added_count} movies via CSV import: {', '.join(added_titles)}")
+
+        click.echo(f"\nImport complete. Added: {added_count}, Skipped (duplicates): {skipped_count}.")
         return
 
-    # --- NEW: Logic for Letterboxd import ---
+    # --- FINAL: Logic for Letterboxd import ---
     click.echo("Processing Letterboxd export file...")
     to_update, to_add, error = core.process_letterboxd_zip(filepath)
-
     if error:
-        click.echo(click.style(error["Error"], fg='red'))
-        return
+        click.echo(click.style(error["Error"], fg='red')); return
 
-    click.echo(f"Found {len(to_update)} movies to update in your archive.")
-    click.echo(f"Found {len(to_add)} new movies not in your archive.")
+    click.echo(f"Found {len(to_update)} movies to update and {len(to_add)} new movies.")
+    if not to_update and not to_add:
+        click.echo("Nothing to import."); return
 
     movies_to_process = []
-    
-    if not to_update and not to_add:
-        click.echo("Nothing to import.")
-        return
-
     if to_add:
-        questions = [
-            inquirer.List('choice',
-                message="Do you want to add the new movies found in the export?",
-                choices=['Yes, add all new movies', 'No, only update existing movies', 'Abort'],
-            ),
-        ]
+        questions = [inquirer.List('choice', message="What to do with new movies?", choices=['Add all new movies', 'Only update existing movies', 'Abort'])]
         answer = inquirer.prompt(questions)
         
         if not answer or answer['choice'] == 'Abort':
-            click.echo("Import aborted.")
-            return
+            click.echo("Import aborted."); return
         
-        if answer['choice'] == 'Yes, add all new movies':
+        if answer['choice'] == 'Add all new movies':
             movies_to_process.extend(to_add)
         else:
-            # User chose to only update, so we list the movies that will be skipped.
             skipped_list = [f"{m['title']} ({m['year']})" for m in to_add]
             click.echo(click.style("\nThe following movies will be skipped:", bold=True))
             click.echo(", ".join(skipped_list))
     
-    # Always include movies that are being updated
     movies_to_process.extend(to_update)
-
     if not movies_to_process:
-        click.echo("No movies selected for processing. Exiting.")
-        return
+        click.echo("No movies selected for processing. Exiting."); return
 
-    click.echo(f"\nPreparing to process {len(movies_to_process)} movies...")
+    updated_log, added_log = [], []
     for movie in tqdm(movies_to_process, desc="Importing from Letterboxd"):
-        # If movie is new, add it first
-        database.add_movie(movie['title'], movie['year'])
+        is_new = not database.get_movie_details(movie['title'], movie['year'])
+        if is_new:
+            database.add_movie(movie['title'], movie['year'])
+            added_log.append(f"'{movie['title']} ({movie['year']})'")
+        else:
+            updated_log.append(f"'{movie['title']} ({movie['year']})'")
         
-        # Update watched status and rating
         database.set_movie_watched_status(movie['title'], movie['year'], watched_status=True)
         if movie.get('rating'):
             database.set_user_rating(movie['title'], movie['year'], movie['rating'])
 
+    if updated_log: app_logger.log_info(f"Updated {len(updated_log)} movies from Letterboxd: {', '.join(updated_log)}")
+    if added_log: app_logger.log_info(f"Added {len(added_log)} new movies from Letterboxd: {', '.join(added_log)}")
     click.echo(click.style("\nLetterboxd import complete!", fg='green'))
 
 
@@ -237,7 +282,9 @@ def import_data(filepath, letterboxd):
 @click.option('--director', help="Filter movies by a director's name (case-insensitive).")
 @click.option('--keyword', help="Filter movies by a specific keyword (case-insensitive).")
 @click.option('--collection', help="Filter movies by a collection or franchise (case-insensitive).")
-def search(title_query, actor, director, keyword, collection):
+@click.option('--year', '-y', type=int, help="Filter by a specific year.")
+@click.option('--decade', '-d', type=int, help="Filter by a specific decade (e.g., 1990).")
+def search(title_query, actor, director, keyword, collection, year, decade):
     """
     Performs an advanced search of your local movie archive.
 
@@ -258,9 +305,14 @@ def search(title_query, actor, director, keyword, collection):
     # Sanitize the main query input
     if title_query:
         title_query = title_query.strip()
-
+    
+    # --- Input Validation ---
+    if decade and decade % 10 != 0:
+        click.echo(click.style("Error: Decade must be a valid start year (e.g., 1980, 1990).", fg='red'))
+        return
+    
     # Check if any search criteria were provided
-    if not any([title_query, actor, director, keyword, collection]):
+    if not any([title_query, actor, director, keyword, collection, year, decade]):
         click.echo("Please provide a search term or at least one filter.")
         click.echo("Try 'poparch search --help' for options.")
         return
@@ -268,7 +320,8 @@ def search(title_query, actor, director, keyword, collection):
     results = database.search_movies_advanced(
         title=title_query,
         actor=actor, director=director,
-        keyword=keyword, collection=collection
+        keyword=keyword, collection=collection,
+        year=year, decade=decade
     )
 
     if not results:
@@ -339,34 +392,6 @@ def random(unwatched):
         click.echo("The archive is empty. Add some movies first.")
 
 @cli.command()
-@click.argument('year', type=int)
-def year(year):
-    """Lists all movies from a specific year."""
-    results = database.get_movies_by_year(year)
-    if results:
-        click.echo(f"Movies from {year}:")
-        for title, _ in results:
-            safe_echo(f"- {title}")
-    else:
-        click.echo(f"No movies found for the year {year}.")
-
-@cli.command()
-@click.argument('decade', type=int)
-def decade(decade):
-    """Lists all movies from a specific decade."""
-    if not (1800 <= decade <= 2100 and decade % 10 == 0):
-        click.echo(click.style("Error: Decade must be a valid start of a decade (e.g., 1980, 1990, 2020).", fg='red'))
-        return
-        
-    results = database.get_movies_by_decade(decade)
-    if results:
-        click.echo(f"Movies from the {decade}s:")
-        for title, yr in results:
-            safe_echo(f"- {title} ({yr})")
-    else:
-        click.echo(f"No movies found for the {decade}s decade.")
-
-@cli.command()
 @click.argument('name')
 def delete(name):
     """
@@ -379,12 +404,19 @@ def delete(name):
         click.echo(click.style(f"Error: Invalid movie format for '{name}'.", fg='red'))
         return
 
-    prompt_message = f"Are you sure you want to delete '{title} ({year})'?"
-    if click.confirm(prompt_message):
+    questions = [
+        inquirer.Confirm('confirm', 
+            message=f"Are you sure you want to delete '{title} ({year})'?", 
+            default=False) # Default to No for safety
+    ]
+    answers = inquirer.prompt(questions)
+
+    if answers and answers['confirm']:
         if database.delete_movie(title, year):
-            click.echo(click.style(f"Movie '{title} ({year})' was successfully deleted.", fg='green'))
+            click.echo(click.style(f"Movie '{title} ({year})' deleted.", fg='green'))
+            app_logger.log_info(f"Deleted movie: '{title} ({year})'")
         else:
-            click.echo(click.style(f"Movie '{title} ({year})' not found in the archive.", fg='yellow'))
+            click.echo(click.style(f"Movie '{title} ({year})' not found.", fg='yellow'))
 
 @cli.command()
 @click.argument('filepath', type=click.Path(dir_okay=False, writable=True))
@@ -413,23 +445,18 @@ def export(filepath):
 
 @cli.command()
 def clear():
-    """
-    !!! Deletes ALL movies from the archive !!!
-    """
-    warning = "Warning: This operation will permanently delete ALL movies from your archive."
+    """!!! Deletes ALL movies from the archive !!!"""
+
+    warning = "Warning: This operation will permanently delete ALL movies."
     click.echo(click.style(warning, fg='red', bold=True))
     
-    if click.confirm("Are you absolutely sure you want to do this?"):
-        database.clear_all_movies()
-        click.echo(click.style("The movie archive has been successfully cleared.", fg='green'))
+    questions = [inquirer.Confirm('confirm', message="Are you absolutely sure?", default=False)]
+    answers = inquirer.prompt(questions)
 
-@cli.command()
-def where():
-    """Displays the full path to the application's database file."""
-    from . import core
-    from .database import DB_FILE
-    click.echo("The database file is located at:")
-    click.echo(click.style(DB_FILE, fg='green'))
+    if answers and answers['confirm']:
+        database.clear_all_movies()
+        click.echo(click.style("Archive has been cleared.", fg='green'))
+        app_logger.log_info("User cleared the entire movie archive.")
 
 def _set_watched_status_by_name(name: str, status: bool):
     """Helper function to set watched status for watch/unwatch commands."""
@@ -458,48 +485,52 @@ def unwatch(name):
     _set_watched_status_by_name(name, status=False)
 
 @cli.command()
-@click.option('--key', help="Your TMDb API key to save to the configuration.")
-def config(key):
-    """Configures the application, such as setting the API key."""
+@click.option('--key', help="Your TMDb API key to save.")
+@click.option('--logging', type=click.Choice(['on', 'off']), help="Enable or disable logging.")
+@click.option('--show-paths', is_flag=True, help="Show paths for config, database, and log files.")
+def config(key, logging, show_paths):
+    """Manages application configuration and displays file paths."""
+    # Lazy load to avoid circular dependencies if config needs them
+    from .database import DB_FILE
+    from .logger import LOG_FILE
+    
+    # --- Action Block ---
+    # Perform actions first if any options are provided.
+    action_taken = False
     if key:
         config_manager.save_api_key(key)
         click.echo(click.style("API key saved successfully.", fg='green'))
-    else:
-        click.echo("Usage: poparch config --key YOUR_API_KEY")
-        if config_manager.get_api_key():
-            click.echo("An API key is already configured.")
-
-def _display_and_add_flow(title, year):
-    """
-    A consistent helper to fetch details from the API, display them,
-    and then offer to add the movie to the local archive.
-    """
-    # Note: Lazy loading happens inside smart_info, not here.
-    from . import core, database
-    import textwrap
-
-    click.echo(f"Fetching details for '{title} ({year})' from TMDb...")
-    details = core.fetch_movie_details_from_api(title, year)
-
-    if details.get("Error"):
-        click.echo(click.style(f"Error: {details['Error']}", fg='red'))
-        return
-
-    # Check if the movie is already in our archive before displaying
-    is_in_archive = database.get_movie_details(title, year) is not None
+        action_taken = True
     
-    display_details = {'title': title, 'year': year, **details, 'in_archive': is_in_archive}
-    display_movie_details(display_details)
+    if logging is not None:
+        is_enabled = logging == 'on'
+        config_manager.save_logging_status(is_enabled)
+        status = "enabled" if is_enabled else "disabled"
+        click.echo(f"Logging has been {status}.")
+        action_taken = True
+        
+    if show_paths:
+        click.echo(click.style("\nApplication File Paths:", bold=True))
+        click.echo(f"  {'Config File:':<15} {config_manager.CONFIG_FILE}")
+        click.echo(f"  {'Database File:':<15} {DB_FILE}")
+        click.echo(f"  {'Log File:':<15} {LOG_FILE}")
+        action_taken = True
 
-    if not is_in_archive and click.confirm("\nDo you want to add this movie to your archive?", default=True):
-        if database.add_movie(title, year):
-            database.update_movie_details(title, year, details)
-            click.echo(click.style(f"Movie '{title} ({year})' added to your archive.", fg='green'))
+    # --- Help/Status Block ---
+    # If the command was run without any options, show current status.
+    if not action_taken:
+        click.echo("Current configuration status:")
+        
+        api_key = config_manager.get_api_key()
+        if api_key:
+            click.echo(click.style("  - API Key: Set", fg='green'))
         else:
-            # This case might happen in a race condition, but good to handle
-            click.echo(click.style(f"Movie '{title} ({year})' already exists in your archive.", fg='yellow'))
-    elif not is_in_archive:
-        click.echo("Movie was not added to the archive.")
+            click.echo(click.style("  - API Key: Not Set", fg='yellow'))
+            
+        logging_status = "Enabled" if config_manager.is_logging_enabled() else "Disabled"
+        click.echo(f"  - Logging: {logging_status}")
+        
+        click.echo("\nUse 'poparch config --help' to see available options.")
 
 def display_movie_details(movie_data):
     """A consistent helper to display movie details from a dictionary."""
@@ -798,6 +829,11 @@ def update(filepath, force, cleanup):
                     error_display = "API Error"
                 
                 click.echo(f"  - {movie_name:<40} | Reason: {error_display}")
+                # --- NEW: Detailed Logging ---
+        app_logger.log_info(f"Update Summary: Processed {total_processed}/{len(movies_to_update)}. Success: {updated_count}, Failed: {len(failed_movies)}.")
+        if failed_movies:
+            failed_titles = [f[0] for f in failed_movies]
+            app_logger.log_error(f"Failed to update movies: {', '.join(failed_titles)}")
 
 @cli.command()
 @click.argument('name')
@@ -819,6 +855,31 @@ def rate(name, rating):
         click.echo(click.style(f"Successfully rated '{title} ({year})' as {rating}/10.", fg='green'))
     else:
         click.echo(click.style(f"Error: {message}", fg='red'))
+
+@cli.group()
+def log():
+    """Commands for interacting with the log file."""
+    pass
+
+@log.command()
+def view():
+    """Displays the last 20 lines of the log file."""
+    from .logger import LOG_FILE
+    if os.path.exists(LOG_FILE):
+        with open(LOG_FILE, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+            for line in lines[-20:]:
+                click.echo(line, nl=False)
+    else:
+        click.echo("Log file does not exist yet.")
+
+@log.command()
+def clear():
+    """Clears all entries from the log file."""
+    if app_logger.clear_logs():
+        click.echo(click.style("Log file has been cleared.", fg='green'))
+    else:
+        click.echo(click.style("Error: Could not clear log file.", fg='red'))
 
 if __name__ == '__main__':
     cli()

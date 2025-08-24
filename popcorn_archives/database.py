@@ -2,6 +2,7 @@ import sqlite3
 import os
 import click
 from collections import Counter
+from . import logger as app_logger
 
 APP_NAME = "PopcornArchives"
 APP_DIR = click.get_app_dir(APP_NAME)
@@ -79,6 +80,7 @@ def add_movie(title, year):
     except sqlite3.OperationalError as e:
         click.echo(f"Database error: {e}", err=True)
         return False
+    app_logger.log_info(f"Added movie: {title} ({year})")
 
 def search_movie(query, exact=False):
     """
@@ -125,6 +127,7 @@ def delete_movie(title, year):
         cursor = conn.execute(sql, (title, year))
         conn.commit()
         return cursor.rowcount > 0
+    app_logger.log_info(f"Deleted movie: {title} ({year})")
 
 def clear_all_movies():
     """Deletes all movies from the database."""
@@ -292,7 +295,7 @@ def get_all_unique_genres():
             
         return sorted(list(all_genres))
     
-def search_movies_advanced(title=None, director=None, actor=None, keyword=None, collection=None):
+def search_movies_advanced(title=None, director=None, actor=None, keyword=None, collection=None, year=None, decade=None):
     """
     Performs an advanced search with multiple optional criteria.
     All text-based searches are case-insensitive and partial.
@@ -317,7 +320,12 @@ def search_movies_advanced(title=None, director=None, actor=None, keyword=None, 
         if collection:
             conditions.append("collection LIKE ? COLLATE NOCASE")
             params.append(f'%{collection}%')
-
+        if year:
+            conditions.append("year = ?")
+            params.append(year)
+        if decade:
+            conditions.append("year BETWEEN ? AND ?")
+            params.extend([decade, decade + 9])
         if not conditions:
             # If no filters are provided, it's better to return an empty list.
             return []

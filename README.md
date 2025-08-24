@@ -141,8 +141,6 @@ Here is a summary of the available commands:
 | `info` | Smartly finds a movie locally or online. | `poparch info "Pulp Fiction"` |
 | `search`| Advanced search with filters. | `poparch search --director "Nolan"` |
 | `random`| Suggests a random movie. | `poparch random --unwatched` |
-| `year` | Lists movies from a specific year. | `poparch year 1942` |
-| `decade`| Lists movies from a specific decade. | `poparch decade 1940` |
 | `genre` | Lists movies by genre (interactive). | `poparch genre` |
 | `stats` | Displays archive statistics. | `poparch stats` |
 | **Watched Status** | | |
@@ -151,7 +149,7 @@ Here is a summary of the available commands:
 | **Configuration & Maintenance** | | |
 | `config`| Sets the TMDb API key. | `poparch config --key <your_key>` |
 | `update`| Fetches missing details for all movies. | `poparch update --force` |
-| `where` | Displays the location of the database. | `poparch where` |
+| `log` | Interact with the log file. | `poparch log view` |
 
 ## 🚀 Roadmap: Future Features
 
@@ -166,6 +164,9 @@ Popcorn Archives is actively being developed. Here's a look at some of the excit
     -   Add a `--json` flag to commands like `info`, `search`, and `stats` to output data in a machine-readable JSON format, allowing `poparch` to be used in scripts.
 -   [ ] **Advanced Configuration**:
     -   Expand the `config` command to allow users to customize aspects of the application, such as default output formats or color schemes.
+-   [ ] **Combined Filtering**:
+    -   Allow combining multiple filters in the `search` command for even more powerful queries.
+    -   Example: `poparch search --decade 1990 --genre "Action"`
 
 ### New Commands & Features
 -   [ ] **Smart Recommendations**:
@@ -214,7 +215,7 @@ If you wish to completely remove Popcorn Archives and all its data, please follo
 **Step 1: Locate the Data Directory**
 First, find out where your data is stored using the built-in `where` command:
 ```bash
-poparch where
+poparch config --show-paths
 ```
 Copy or take note of the directory path shown.
 

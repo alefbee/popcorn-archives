@@ -25,3 +25,26 @@ def get_api_key():
     except KeyError:
         return None
     
+def save_logging_status(is_enabled: bool):
+    """Saves the logging status to the config file."""
+    os.makedirs(APP_DIR, exist_ok=True)
+    config = configparser.ConfigParser()
+    # Read existing config to not overwrite API key
+    if os.path.exists(CONFIG_FILE):
+        config.read(CONFIG_FILE)
+    if 'SETTINGS' not in config:
+        config['SETTINGS'] = {}
+    config['SETTINGS']['LOGGING'] = 'on' if is_enabled else 'off'
+    with open(CONFIG_FILE, 'w') as configfile:
+        config.write(configfile)
+
+def is_logging_enabled():
+    """Checks if logging is enabled in the config file."""
+    if not os.path.exists(CONFIG_FILE):
+        return False
+    config = configparser.ConfigParser()
+    config.read(CONFIG_FILE)
+    try:
+        return config.getboolean('SETTINGS', 'LOGGING')
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        return False # Default to off if not set

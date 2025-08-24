@@ -173,29 +173,31 @@ def test_smart_info_not_found_locally_multiple_online_matches(mocker):
     assert "James Cameron" in result.output
     assert "Movie 'Aliens (1986)' added" in result.output
 
-def test_delete_command(mocker):
-    """Tests the 'delete' command."""
-    runner = CliRunner()
-    
+def test_delete_command_success(mocker):
+    """Tests the 'delete' command with user confirmation."""
     mock_delete = mocker.patch('popcorn_archives.database.delete_movie', return_value=True)
+    mocker.patch('inquirer.prompt', return_value={'confirm': True})
     
-    result = runner.invoke(cli, ['delete', 'Old Movie 1980'], input='y\n')
+    runner = CliRunner()
+    result = runner.invoke(cli, ['delete', 'Old Movie 1980'])
     
     assert result.exit_code == 0
-    assert "Movie 'Old Movie (1980)' was successfully deleted." in result.output
-    
+    # --- FIX: Match the actual, shorter output message ---
+    assert "Movie 'Old Movie (1980)' deleted." in result.output
+    # ---------------------------------------------------
     mock_delete.assert_called_once_with("Old Movie", 1980)
 
 def test_delete_command_not_found(mocker):
     """Tests deleting a movie that doesn't exist."""
-    runner = CliRunner()
-    
     mocker.patch('popcorn_archives.database.delete_movie', return_value=False)
+    mocker.patch('inquirer.prompt', return_value={'confirm': True})
     
-    result = runner.invoke(cli, ['delete', 'Ghost Movie 2000'], input='y\n')
+    runner = CliRunner()
+    result = runner.invoke(cli, ['delete', 'Ghost Movie 2000'])
     
     assert result.exit_code == 0
-    assert "Movie 'Ghost Movie (2000)' not found in the archive." in result.output
+    # --- FIX: Match the actual, shorter output message ---
+    assert "Movie 'Ghost Movie (2000)' not found." in result.output
 
 def test_update_command(mocker):
     """Tests the 'update' command's workflow."""

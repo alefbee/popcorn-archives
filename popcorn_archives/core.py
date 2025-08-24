@@ -5,6 +5,7 @@ import requests
 from tqdm import tqdm
 from . import config as config_manager
 import zipfile
+from . import logger as app_logger
 
 def parse_movie_title(name):
     """
@@ -136,7 +137,8 @@ def fetch_movie_details_from_api(title, year=None):
         tmdb_score = f"{int(details.get('vote_average', 0) * 10)}%"
         collection_info = details.get('belongs_to_collection')
         collection_name = collection_info['name'] if collection_info else None
-        
+        app_logger.log_info(f"Successfully fetched details for '{details.get('title')}' from API.")
+
         return {
             "genre": ", ".join([g['name'] for g in details.get('genres', [])]),
             "director": director_str,
@@ -148,6 +150,10 @@ def fetch_movie_details_from_api(title, year=None):
             "keywords": keywords,
             "collection": collection_name
         }
+    except Exception as e:
+        error_message = f"API request failed for '{title} ({year})': {e}"
+        app_logger.log_error(error_message)
+        return {"Error": error_message}
     except requests.exceptions.Timeout:
         return {"Error": "Request to TMDb API timed out after 5 seconds."}
     except requests.exceptions.RequestException as e:

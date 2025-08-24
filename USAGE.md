@@ -35,10 +35,19 @@ This command manages your application settings.
     # Get your key from themoviedb.org, then save it:
     poparch config --key YOUR_TMDB_API_KEY
     ```
--   **Finding Your Database:**
-    To see the exact location of your local database file:
+-   **Enabling/Disabling Logging:**
+    Logging is disabled by default. You must enable it to start recording events.
     ```bash
-    poparch config --show-path
+    # To enable logging
+    poparch config --logging on
+
+    # To disable logging
+    poparch config --logging off
+    ```
+-   **Finding Your Data Paths:**
+    To see the exact location of your configuration, database, and log files:
+    ```bash
+    poparch config --show-paths
     ```
 
 ---
@@ -64,27 +73,29 @@ This is the most powerful command for discovery. It intelligently finds a movie 
     ```
 
 ### `search [TITLE] [OPTIONS...]`
-This command performs an advanced, filtered search of your **local archive only**. It's the best way to query your existing collection.
+Performs an advanced, filtered search of your **local archive only**. This is the most powerful way to query your existing collection. You can search by a partial movie `TITLE` and/or combine multiple filters.
 
 -   **Available Filters:**
     -   `--actor <name>`
     -   `--director <name>`
     -   `--keyword <word>`
     -   `--collection <name>`
+    -   `--year <yyyy>` or `-y <yyyy>`
+    -   `--decade <yyyy>` or `-d <yyyy>` (e.g., 1990)
 
 -   **Examples:**
     ```bash
-    # Find all movies with 'Godfather' in the title
-    poparch search "Godfather"
+    # Find all movies from 1999
+    poparch search --year 1999
 
-    # Find all movies in your archive directed by Christopher Nolan
+    # Find all movies in your archive from the 1980s
+    poparch search --decade 1980
+
+    # Find all movies directed by Christopher Nolan
     poparch search --director "Nolan"
 
     # Find all of Tom Hanks' movies that also have 'Road' in the title
     poparch search "Road" --actor "Tom Hanks"
-
-    # Find all movies in the "John Wick" collection
-    poparch search --collection "John Wick"
     ```
 
 ### `genre [GENRE_NAME]`
@@ -189,3 +200,28 @@ These commands allow you to toggle the "watched" status of a movie.
 Suggests a random movie from your archive.
 -   Use the `--unwatched` flag to get a suggestion for a movie you haven't seen yet.
 -   **Example:** `poparch random --unwatched`
+
+## Logging
+
+`poparch` can keep a detailed log of all major operations. Logging is **disabled by default**.
+
+### `log`
+This command group provides tools for interacting with the log file.
+
+-   **View Recent Logs:**
+    See the last 20 entries in the log file.
+    ```bash
+    poparch log view
+    ```
+-   **Clear All Logs:**
+    Permanently erases all content from the log file.
+    ```bash
+    poparch log clear
+    ```
+
+### Enabling Logging
+You must enable logging via the `config` command to start recording events.
+-   **Example:**
+    ```bash
+    poparch config --logging on
+    ```

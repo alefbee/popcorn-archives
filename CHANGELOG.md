@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2025-08-24
+
+### Added
+- **Comprehensive Logging System**: A full-featured logging system has been introduced.
+    - Major events (add, delete, update, scan, import) are now recorded to a log file.
+    - Logging is disabled by default and can be controlled via `poparch config --logging on/off`.
+    - New `poparch log` command group with `view` and `clear` subcommands to manage the log file.
+
+### Changed
+- **Unified `search` Command**: The `show` command (previously `year` and `decade`) has been merged into the `search` command. Users can now filter by `--year` and `--decade` directly within the powerful `search` interface for a more consistent experience.
+
+### Removed
+- The separate `year` and `decade` commands have been removed in favor of the new filter options in the `search` command.
+
 ## [3.2.2] - 2025-08-23
 
 ### Fixed
