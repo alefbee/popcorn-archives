@@ -23,7 +23,7 @@ def cli():
     https://github.com/alefbee/popcorn-archives/blob/main/USAGE.md
     """
     database.init_db()
-    app_logger.initialize_log_file()
+    app_logger.setup_logger()
 
 
 @cli.command()

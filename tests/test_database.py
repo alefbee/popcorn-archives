@@ -1,6 +1,7 @@
 import pytest
 import sqlite3
 from popcorn_archives import database
+from popcorn_archives import logger as app_logger
 
 @pytest.fixture
 def db_connection(monkeypatch):
@@ -9,6 +10,7 @@ def db_connection(monkeypatch):
     """
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
+    app_logger.setup_logger()
     
     conn.execute('''
         CREATE TABLE movies (

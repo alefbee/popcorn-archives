@@ -3,24 +3,35 @@ import os
 import click
 from . import config as config_manager
 
+# Define constants
 APP_NAME = "PopcornArchives"
 APP_DIR = click.get_app_dir(APP_NAME)
 LOG_FILE = os.path.join(APP_DIR, 'poparch.log')
 
-# Create a custom logger
+# Get the logger, but DO NOT configure it yet.
 logger = logging.getLogger('poparch_logger')
-logger.setLevel(logging.INFO)
 
-# Create handlers
-file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
-file_handler.setLevel(logging.INFO)
+def setup_logger():
+    """
+    Sets up the logger, creating the directory and file handler.
+    This should be called once when the application starts.
+    """
+    # Only set up handlers if they haven't been set up already.
+    if logger.hasHandlers():
+        return
 
-# Create formatters and add it to handlers
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-file_handler.setFormatter(formatter)
+    try:
+        os.makedirs(APP_DIR, exist_ok=True)
+    except OSError:
+        # Handle cases where we can't create the directory
+        click.echo(click.style("Warning: Could not create config directory for logging.", fg='red'))
+        return
 
-# Add handlers to the logger
-logger.addHandler(file_handler)
+    logger.setLevel(logging.INFO)
+    file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 
 def initialize_log_file():
     """Creates the log file with an initial message if it doesn't exist."""
