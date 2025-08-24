@@ -213,7 +213,7 @@ We also use **GitHub Actions** for Continuous Integration. Every push and pull r
 If you wish to completely remove Popcorn Archives and all its data, please follow these steps carefully.
 
 **Step 1: Locate the Data Directory**
-First, find out where your data is stored using the built-in `where` command:
+First, find out where your data is stored using the built-in `config` command:
 ```bash
 poparch config --show-paths
 ```
