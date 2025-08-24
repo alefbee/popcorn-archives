@@ -10,17 +10,28 @@ A simple and powerful command-line tool to manage your personal movie watchlist,
 
 ## In Action: A Typical Workflow
 
-Take a tour of a typical user session in this single demonstration. The animation showcases how several key commands work together to manage and explore your movie collection.
+Take a tour of a typical user session in this single demonstration. The animation showcases a common workflow, from populating your archive to managing and exploring your personal movie collection.
 
-![Popcorn Archives Live Demo](assets/popcorn-archives2-demo.apng)
+![Popcorn Archives Live Demo](assets/popcorn-archives-v3.1-demo.apng)
 
 **In this demo, you can see the following sequence of actions:**
 
-1.  **Populating the Archive (`scan` & `add`):** The session begins by using `poparch scan` to quickly import an entire directory of movie folders. A single movie is then added manually with `poparch add`.
-2.  **Checking the Dashboard (`stats`):** Immediately after, the user runs `poparch stats` to see a beautiful, colorful dashboard summarizing the newly populated archive.
-3.  **Enriching the Data (`update`):** With the movies added, the `poparch update` command is run. It automatically finds all movies with missing details and fetches their genre, plot, and rating information from the OMDb API.
-4.  **Viewing Movie Details (`info`):** To see the newly fetched data, the user runs `poparch info` on a specific movie, displaying its detailed information card.
-5.  **Getting a Recommendation (`random --unwatched`):** Finally, looking for a movie to watch, the user runs `poparch random --unwatched` to get a suggestion for a great film they haven't seen yet.
+1.  **Building the Archive (`scan` & `add`):**
+    The session begins by populating the archive. First, `poparch scan` quickly imports an entire directory of local movie folders. Immediately after, a single movie is added manually with `poparch add "The Matrix 1999"`.
+
+2.  **Enriching the Data (`update`):**
+    With movies now in the database, `poparch update` is run. The tool finds all movies with incomplete information and automatically fetches their rich metadata (genre, cast, director, etc.) from TMDb.
+
+3.  **Getting Insights (`stats`):**
+    After the update, the user runs `poparch stats` to see the beautiful, personalized dashboard. This provides an instant overview of the collection and reveals interesting patterns about their movie taste.
+
+4.  **Managing a Specific Movie (`watch` & `rate`):**
+    The user then manages the movie added earlier, marking it as seen with `poparch watch "The Matrix 1999"` and giving it a perfect 10-star personal rating using `poparch rate "The Matrix 1999" 10`.
+
+5.  **Viewing the Final Result (`info`):**
+    Finally, `poparch info "The Matrix 1999"` is used to view the complete details for that movie. The output now shows the fully enriched data from the API, as well as the user's personal rating and watched status, all in one clean card.
+
+> **Tech Note:** The animation above is a high-quality **APNG** (Animated PNG), not a GIF. This modern format is supported by GitHub and allows for perfect color reproduction and better compression.
 
 ## Features
 
