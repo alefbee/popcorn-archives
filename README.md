@@ -8,6 +8,16 @@
 
 A simple and powerful command-line tool to manage your personal movie watchlist, built with Python and Click.
 
+## Motivation
+
+I needed a proper database for the large movie collection in my personal archive.  
+Managing everything in an Excel file was cumbersome and inefficient.  
+
+So, I decided to build a tool — with the help of AI — that lets me easily manage my archive locally.  
+With this program, I can quickly search which movies I already own and which ones I don’t, along with other useful information, all available at my fingertips.  
+
+That’s why I created **Popcorn Archives**, and I’m sharing it so others can benefit as well.
+
 ## In Action: A Typical Workflow
 
 Take a tour of a typical user session in this single demonstration. The animation showcases a common workflow, from populating your archive to managing and exploring your personal movie collection.
