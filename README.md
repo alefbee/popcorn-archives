@@ -228,13 +228,16 @@ Using the path you found in Step 1, manually delete the application's data direc
 
 ## 🤝 Contributing
 
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+Contributions are the lifeblood of open source, and any help you can provide is **greatly appreciated**. This project is intended to be a safe, welcoming space for collaboration, and all contributors are expected to adhere to our **[Code of Conduct](CODE_OF_CONDUCT.md)**.
 
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
+There are many ways to contribute, from reporting bugs to writing code.
 
-For more detailed information, please see our **[Contributing Guide](CONTRIBUTING.md)**.
+### How You Can Help
+-   **🐛 Found a bug?** Please open a [new issue](https://github.com/alefbee/popcorn-archives/issues/new/choose) using the "Bug Report" template.
+-   **🚀 Have a feature idea?** We'd love to hear it! Please open a [new issue](https://github.com/alefbee/popcorn-archives/issues/new/choose) using the "Feature Request" template.
+-   **💻 Want to write code?** That's fantastic! Please read our **[Contributing Guide](CONTRIBUTING.md)** to learn how to set up your development environment, run tests, and submit a pull request.
 
-*(Don't forget to give the project a star! Thanks again!)*
+*(Don't forget to give the project a star ⭐ if you find it useful! Thank you!)*
 
 ## About This Project
 
