@@ -42,7 +42,7 @@ Take a tour of a typical user session in this single demonstration. The animatio
 
 ### 🔎 Discovery & Exploration
 -   **Smart & Interactive Info**: The powerful `info` command acts as your gateway to movie knowledge. It intelligently finds movies both locally and online, with interactive menus for ambiguous queries.
--   **Advanced Search & Filtering**: Instantly search your local archive with a rich `search` command that can filter by title, `--actor`, `--director`, `--keyword`, and `--collection`.
+-   **Advanced Search & Filtering**: Instantly search your local archive with a rich `search` command that can filter by title, `--actor`, `--director`, `--keyword`, `--year`, `--decade` and `--collection`.
 -   **Personalized Stats Dashboard**: Uncover insights into your collection and personal taste with the beautiful `stats` dashboard, which analyzes your top genres, favorite directors, and more.
 -   **Interactive Genre Filtering**: Use the `genre` command without arguments to get a dynamic, numbered list of all genres in your archive to choose from.
 
@@ -195,7 +195,7 @@ Popcorn Archives is actively being developed. Here's a look at some of the excit
 -   [ ] **Advanced Documentation**:
     -   Create a full documentation website using GitHub Pages and a tool like MkDocs or Sphinx.
     -   Build out the GitHub Wiki with more in-depth guides.
--   [ ] **Contribution Guide**:
+-   [x] **Contribution Guide**:
     -   Create a `CONTRIBUTING.md` file to explain how other developers can contribute to the project, report bugs, and suggest features.
 -   [ ] **Publish to PyPI**:
     -   The final step: publish the project to the official Python Package Index (PyPI) so users worldwide can install it simply with `pip install popcorn-archives`.
@@ -225,6 +225,16 @@ Copy or take note of the directory path shown.
 
 **Step 3: Remove the User Data**
 Using the path you found in Step 1, manually delete the application's data directory. **This action is irreversible.**
+
+## 🤝 Contributing
+
+Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
+
+For more detailed information, please see our **[Contributing Guide](CONTRIBUTING.md)**.
+
+*(Don't forget to give the project a star! Thanks again!)*
 
 ## About This Project
 
