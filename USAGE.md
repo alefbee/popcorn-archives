@@ -76,26 +76,26 @@ This is the most powerful command for discovery. It intelligently finds a movie 
 Performs an advanced, filtered search of your **local archive only**. This is the most powerful way to query your existing collection. You can search by a partial movie `TITLE` and/or combine multiple filters.
 
 -   **Available Filters:**
-    -   `--actor <name>`
-    -   `--director <name>`
-    -   `--keyword <word>`
-    -   `--collection <name>`
-    -   `--year <yyyy>` or `-y <yyyy>`
-    -   `--decade <yyyy>` or `-d <yyyy>` (e.g., 1990)
+    -   `--actor, -a <name>`
+    -   `--director, -d <name>`
+    -   `--keyword, -k <word>`
+    -   `--collection, -c <name>`
+    -   `--year, -y <yyyy>`
+    -   `--decade, -D <yyyy>` (e.g., 1990)
 
 -   **Examples:**
     ```bash
-    # Find all movies from 1999
-    poparch search --year 1999
+    # Find all movies from 1999 using the short alias
+    poparch search -y 1999
 
     # Find all movies in your archive from the 1980s
-    poparch search --decade 1980
+    poparch search -D 1980
 
     # Find all movies directed by Christopher Nolan
-    poparch search --director "Nolan"
+    poparch search -d "Nolan"
 
     # Find all of Tom Hanks' movies that also have 'Road' in the title
-    poparch search "Road" --actor "Tom Hanks"
+    poparch search "Road" -a "Tom Hanks"
     ```
 
 ### `genre [GENRE_NAME]`

@@ -8,15 +8,13 @@
 
 A simple and powerful command-line tool to manage your personal movie watchlist, built with Python and Click.
 
-## Motivation
+## Why Popcorn Archives?
 
-I needed a proper database for the large movie collection in my personal archive.  
-Managing everything in an Excel file was cumbersome and inefficient.  
+As a movie enthusiast, I found myself with a large personal archive and a growing problem: managing it all in a spreadsheet was becoming slow and cumbersome.
 
-So, I decided to build a tool — with the help of AI — that lets me easily manage my archive locally.  
-With this program, I can quickly search which movies I already own and which ones I don’t, along with other useful information, all available at my fingertips.  
+I wanted a simple, fast, and powerful command-line tool to quickly search which movies I already own and which ones I don’t, with all the rich details available at my fingertips. I couldn't find exactly what I was looking for, so I decided to build it.
 
-That’s why I created **Popcorn Archives**, and I’m sharing it so others can benefit as well.
+This project is the result: a personal movie archive manager built for speed and simplicity. I'm sharing it in the hope that it helps other movie lovers too.
 
 ## In Action: A Typical Workflow
 
@@ -149,7 +147,7 @@ Here is a summary of the available commands:
 | `rate` | Rates a movie in your archive | `poparch rate "The Matrix 1999" 10` |
 | **Information & Search** | | |
 | `info` | Smartly finds a movie locally or online. | `poparch info "Pulp Fiction"` |
-| `search`| Advanced search with filters. | `poparch search --director "Nolan"` |
+| `search`| Advanced search with filters. | `poparch search -d "Nolan"` |
 | `random`| Suggests a random movie. | `poparch random --unwatched` |
 | `genre` | Lists movies by genre (interactive). | `poparch genre` |
 | `stats` | Displays archive statistics. | `poparch stats` |

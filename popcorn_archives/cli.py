@@ -278,29 +278,25 @@ def import_data(filepath, letterboxd):
 
 @cli.command()
 @click.argument('query', required=False)
-@click.option('--actor', help="Filter by actor's name.")
-@click.option('--director', help="Filter by director's name.")
-@click.option('--keyword', help="Filter by a keyword.")
-@click.option('--collection', help="Filter by a collection.")
+@click.option('--actor', '-a', help="Filter by actor's name.")
+@click.option('--director', '-d', help="Filter by director's name.")
+@click.option('--keyword', '-k', help="Filter by a keyword.")
+@click.option('--collection', '-c', help="Filter by a collection.")
 @click.option('--year', '-y', 'year_filter', type=int, help="Filter by a specific year.")
-@click.option('--decade', '-d', 'decade_filter', type=int, help="Filter by a specific decade.")
+@click.option('--decade', '-D', 'decade_filter', type=int, help="Filter by a specific decade.")
 def search(query, actor, director, keyword, collection, year_filter, decade_filter):
     """
-    Performs an advanced search of your local movie archive.
-
-    You can search by a partial movie TITLE and/or combine multiple filters
-    for a more precise search.
+    Performs an advanced search of your movie archive.
+    
+    You can search by a partial movie TITLE and/or combine multiple filters.
 
     \b
     Examples:
-      - Find all movies with 'Matrix' in the title:
-        $ poparch search "Matrix"
+      - Find all movies from the 1990s:
+        $ poparch search -D 1990
     \b
-      - Find all movies directed by Christopher Nolan:
-        $ poparch search --director "Nolan"
-    \b
-      - Find all of Tom Hanks' movies with 'Road' in the title:
-        $ poparch search "Road" --actor "Tom Hanks"
+      - Find all movies directed by Nolan with 'dark' in the title:
+        $ poparch search "dark" -d "Nolan"
     """
     from . import core
 
