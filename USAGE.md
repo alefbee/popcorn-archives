@@ -7,7 +7,7 @@ Welcome to the comprehensive user guide for Popcorn Archives (`poparch`). This d
 2.  [Configuration](#configuration)
 3.  [Finding & Viewing Movies](#finding--viewing-movies)
 4.  [Managing Your Archive](#managing-your-archive)
-5.  [Maintenance & Bulk Operations (Scan, Import, Export)](#Maintenance-&-Bulk-Operations)
+5.  [Maintenance & Bulk Operations (Scan, Import, Export)](#maintenance--bulk-operations)
 6.  [Tracking Watched Status](#tracking-watched-status)
 
 ---

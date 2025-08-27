@@ -249,12 +249,29 @@ There are many ways to contribute, from reporting bugs to writing code.
 
 ## About This Project
 
-This project was developed as a personal learning journey to create a useful, real-world command-line application in Python. It was an opportunity to practice key software development concepts, including:
+`poparch` began as a personal solution to a common problem for movie lovers: how to effectively manage a large, personal film archive beyond a simple spreadsheet. It has since evolved into a powerful, feature-rich command-line tool built on a clear and robust architectural philosophy.
 
--   Building a robust CLI with `Click`.
--   Database management with `SQLite`.
--   Creating an installable package with `setuptools`.
--   Following best practices for project structure and documentation.
--   Implementing version control with Git and GitHub.
+### Core Philosophy: API as the Single Source of Truth
 
-This project was built with significant assistance from AI tools like Google's Gemini.
+The central design principle of `poparch` is to treat **The Movie Database (TMDb) as the single source of truth** for movie metadata. Unlike other tools that might rely on potentially inconsistent local filenames, `poparch` uses the API to fetch the **canonical title, year, and details** for any movie before adding it to the local archive. This ensures the user's database is always clean, consistent, and accurate.
+
+This "API-first" approach solves common problems like:
+-   Minor differences in titles (e.g., `"Mission Impossible"` vs. `"Mission: Impossible"`).
+-   Incorrect year information from filenames.
+-   Inconsistent capitalization.
+
+### Technical Architecture
+
+The project is built on a clean, multi-layered architecture based on the **Separation of Concerns** principle. This makes the codebase maintainable, testable, and easy to extend.
+
+-   **CLI Layer (`cli.py`):** The user-facing layer, built with **Click** and **Inquirer**. It is responsible for parsing commands and displaying data, but contains no business logic.
+-   **Core Logic Layer (`core.py`):** The "brain" of the application. It handles all interactions with the external TMDb API, processes user queries, and formats data. It knows nothing about the database or the UI.
+-   **Data Access Layer (`database.py`):** The only part of the application that communicates with the **SQLite** database. It abstracts all SQL queries into simple Python functions.
+-   **Configuration & Logging (`config.py`, `logger.py`):** These modules handle cross-cutting concerns like managing the API key and recording application events.
+
+### A Modern Development Showcase
+
+This project also serves as a showcase for modern software development best practices:
+-   **Automated Testing & CI/CD:** A comprehensive test suite using **pytest** and **pytest-mock** ensures code reliability. This suite is run automatically on every push via a **GitHub Actions** workflow.
+-   **Community Ready:** With a full `USAGE.md` manual, `CONTRIBUTING.md` guide, and Issue/PR templates, the project is structured to welcome collaboration.
+-   **AI-Assisted Development:** This project was built with significant assistance from AI tools, demonstrating a modern workflow that combines human-driven architectural decisions with AI-powered acceleration for implementation and debugging.
