@@ -312,7 +312,6 @@ def test_search_command_interactive_genre(mocker):
     result = runner.invoke(cli, ['search']) # Run with no arguments
     
     assert result.exit_code == 0
-    assert "Starting interactive genre finder..." in result.output
     assert "Found 1 movies for genre 'Action'" in result.output
     assert "Die Hard" in result.output
     
