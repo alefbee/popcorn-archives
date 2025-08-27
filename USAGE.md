@@ -73,46 +73,36 @@ This is the most powerful command for discovery. It intelligently finds a movie 
     ```
 
 ### `search [TITLE] [OPTIONS...]`
-Performs an advanced, filtered search of your **local archive only**. This is the most powerful way to query your existing collection. You can search by a partial movie `TITLE` and/or combine multiple filters.
+Performs an advanced, filtered search of your **local archive only**. This is the most powerful way to query and explore your existing collection. You can search by a partial movie `TITLE` and/or **combine multiple filters**.
+
+-   **Interactive Mode:** If you run `poparch search` without any arguments or options, it will launch an **interactive menu** of all genres in your database, allowing you to easily browse your collection.
 
 -   **Available Filters:**
     -   `--actor, -a <name>`
     -   `--director, -d <name>`
+    -   `--writer, -w <name>`
+    -   `--company, -p <name>` (production company)
+    -   `--dop <name>` (director of photography)
     -   `--keyword, -k <word>`
     -   `--collection, -c <name>`
+    -   `--genre, -g <name>`
     -   `--year, -y <yyyy>`
     -   `--decade, -D <yyyy>` (e.g., 1990)
 
 -   **Examples:**
     ```bash
-    # Find all movies from 1999 using the short alias
-    poparch search -y 1999
+    # Launch the interactive genre finder
+    poparch search
 
-    # Find all movies in your archive from the 1980s
-    poparch search -D 1980
+    # Find all movies directed by Christopher Nolan from the 2010s
+    poparch search -d "Nolan" -D 2010
 
-    # Find all movies directed by Christopher Nolan
-    poparch search -d "Nolan"
-
-    # Find all of Tom Hanks' movies that also have 'Road' in the title
-    poparch search "Road" -a "Tom Hanks"
+    # Find all Action movies starring Tom Cruise
+    poparch search --genre "Action" -a "Tom Cruise"
+    
+    # Intelligently find movies from a specific year from the query
+    poparch search "The Matrix 1999"
     ```
-
-### `genre [GENRE_NAME]`
-Lists movies from your local archive by genre.
-
--   If you provide a genre name, it filters directly.
--   If you run it without a name, it will display an **interactive menu** of all genres present in your database.
--   **Examples:**
-    ```bash
-    # Show an interactive menu of all your genres
-    poparch genre
-
-    # Directly list all 'Action' movies
-    poparch genre Action
-    ```
-
----
 
 ## Managing Your Archive
 

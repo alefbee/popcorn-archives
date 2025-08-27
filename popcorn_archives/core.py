@@ -67,17 +67,22 @@ def read_csv_file(filepath):
 
 BASE_URL = "https://api.themoviedb.org/3"
 
-def fetch_movie_details_from_api(title, year=None):
+def fetch_movie_details_from_api(title, year=None, ignore_year_in_search=False):
     """
-    Fetches detailed movie information from TMDb, always prioritizing popularity.
+    Fetches a rich and comprehensive set of movie details from TMDb.
     """
     api_key = config_manager.get_api_key()
     if not api_key:
         return {"Error": "API key not configured."}
     
     headers = {"accept": "application/json"}
+    
     try:
+        # Step 1: Search for the movie
         search_params = {'api_key': api_key, 'query': title}
+        if year and not ignore_year_in_search:
+            search_params['year'] = year
+            
         search_response = requests.get(f"{BASE_URL}/search/movie", params=search_params, headers=headers, timeout=10)
         search_response.raise_for_status()
         search_data = search_response.json()
@@ -85,71 +90,75 @@ def fetch_movie_details_from_api(title, year=None):
         if not search_data.get('results'):
             return {"Error": f"Movie '{title}' not found on TMDb."}
 
+        # Step 2: Intelligently find the best match from the results
         sorted_results = sorted(search_data['results'], key=lambda r: r.get('popularity', 0), reverse=True)
         
-        best_match = None
+        best_match = sorted_results[0] # Default to the most popular result
         if year:
-            # If a year is provided, find the most popular match for that year.
-            best_match = next((r for r in sorted_results if str(year) in r.get('release_date', '')), None)
+            # If a year was provided, try to find a perfect year match within the popular results.
+            # If not found, we still stick with the most popular one overall.
+            year_match = next((r for r in sorted_results if str(year) in r.get('release_date', '')), None)
+            if year_match:
+                best_match = year_match
         
-        # If no year-specific match was found, or no year was provided, use the most popular overall.
-        if not best_match:
-            best_match = sorted_results[0]
-        
-        # If multiple results were found for a broad search, let the user choose.
+        # If the search was broad (no year) and returned multiple results, let the user choose.
         if len(sorted_results) > 1 and not year:
              return {"MultipleResults": [{'title': r.get('title'), 'year': r.get('release_date', 'N/A')[:4]} for r in sorted_results[:5]]}
         
         movie_id = best_match['id']
-        
-        if len(search_data['results']) > 1 and not year:
-             return {
-                 "MultipleResults": [
-                     {'title': r.get('title'), 'year': r.get('release_date', 'N/A')[:4]}
-                     for r in search_data['results'][:5] # Return top 5
-                 ]
-             }
 
-        # If only one result, or if year was specified, proceed with the first one.
-        movie_id = search_data['results'][0]['id']
-
-        # Step 2: Get full details, including credits and keywords
+        # Step 3: Get full details for the chosen movie ID
         details_params = {'api_key': api_key, 'append_to_response': 'credits,keywords'}
-        details_response = requests.get(f"{BASE_URL}/movie/{movie_id}", params=details_params, headers=headers, timeout=5)
+        details_response = requests.get(f"{BASE_URL}/movie/{movie_id}", params=details_params, headers=headers, timeout=10)
         details_response.raise_for_status()
         details = details_response.json()
 
-        # Step 3: Process and format all the new data
-        directors = [p['name'] for p in details.get('credits', {}).get('crew', []) if p.get('job') == 'Director']
-        director_str = ", ".join(directors) if directors else "N/A"
+        # Step 4: Process and format all data
+        crew = details.get('credits', {}).get('crew', [])
+        directors = [p['name'] for p in crew if p.get('job') == 'Director']
+        writers = ", ".join(sorted(list(set(p['name'] for p in crew if p.get('department') == 'Writing'))))
+        dop = next((p['name'] for p in crew if p.get('job') == 'Director of Photography'), "N/A")
+        
         cast = ", ".join([p['name'] for p in details.get('credits', {}).get('cast', [])[:7]])
         keywords = ", ".join([k['name'] for k in details.get('keywords', {}).get('keywords', [])])
         tmdb_score = f"{int(details.get('vote_average', 0) * 10)}%"
         collection_info = details.get('belongs_to_collection')
-        collection_name = collection_info['name'] if collection_info else None
-        app_logger.log_info(f"Successfully fetched details for '{details.get('title')}' from API.")
+        companies = ", ".join([c['name'] for c in details.get('production_companies', [])[:3]])
+        
+        final_title = details.get('title', title)
+        final_year = int(details.get('release_date', '0-0-0')[:4])
+
+        app_logger.log_info(f"Successfully fetched details for '{final_title}' from API.")
 
         return {
+            "title": final_title,
+            "year": final_year,
             "genre": ", ".join([g['name'] for g in details.get('genres', [])]),
-            "director": director_str,
+            "director": ", ".join(directors) if directors else "N/A",
             "plot": details.get('overview', 'N/A'),
             "tmdb_score": tmdb_score,
             "imdb_id": details.get('imdb_id'),
             "runtime": details.get('runtime'),
-            "cast": cast,
-            "keywords": keywords,
-            "collection": collection_name
+            "cast": cast, "keywords": keywords,
+            "collection": collection_info['name'] if collection_info else None,
+            "tagline": details.get('tagline'),
+            "writers": writers,
+            "dop": dop,
+            "original_language": details.get('original_language'),
+            "poster_path": details.get('poster_path'),
+            "budget": details.get('budget'),
+            "revenue": details.get('revenue'),
+            "production_companies": companies
         }
-    except Exception as e:
-        error_message = f"API request failed for '{title} ({year})': {e}"
-        app_logger.log_error(error_message)
-        return {"Error": error_message}
+    
     except requests.exceptions.Timeout:
-        return {"Error": "Request to TMDb API timed out after 5 seconds."}
+        return {"Error": "Request to TMDb API timed out."}
     except requests.exceptions.RequestException as e:
-        return {"Error": f"Network/API Error: {e}"}
+        app_logger.log_error(f"Network/API Error for '{title} ({year})': {e}")
+        return {"Error": f"Network/API Error"}
     except Exception as e:
-        return {"Error": f"API request failed: {e}"}
+        app_logger.log_error(f"An unexpected error occurred for '{title} ({year})': {e}")
+        return {"Error": f"An unexpected error occurred"}
     
 def process_letterboxd_zip(filepath):
     """

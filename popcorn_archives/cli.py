@@ -275,20 +275,24 @@ def import_data(filepath, letterboxd):
     if added_log: app_logger.log_info(f"Added {len(added_log)} new movies from Letterboxd: {', '.join(added_log)}")
     click.echo(click.style("\nLetterboxd import complete!", fg='green'))
 
-
 @cli.command()
 @click.argument('query', required=False)
-@click.option('--actor', '-a', help="Filter by actor's name.")
-@click.option('--director', '-d', help="Filter by director's name.")
-@click.option('--keyword', '-k', help="Filter by a keyword.")
-@click.option('--collection', '-c', help="Filter by a collection.")
+@click.option('--actor', '-a', help="Filter by an actor's name.")
+@click.option('--director', '-d', help="Filter by a director's name.")
+@click.option('--keyword', '-k', help="Filter by a specific keyword.")
+@click.option('--collection', '-c', help="Filter by a collection or franchise.")
 @click.option('--year', '-y', 'year_filter', type=int, help="Filter by a specific year.")
-@click.option('--decade', '-D', 'decade_filter', type=int, help="Filter by a specific decade.")
-def search(query, actor, director, keyword, collection, year_filter, decade_filter):
+@click.option('--decade', '-D', 'decade_filter', type=int, help="Filter by a specific decade (e.g., 1990).")
+@click.option('--writer', '-w', help="Filter by a writer's name.")
+@click.option('--dop', help="Filter by a director of photography's name.")
+@click.option('--company', '-p', help="Filter by a production company.")
+@click.option('--genre', '-g', help="Filter by a specific genre.")
+def search(query, actor, director, keyword, collection, year_filter, decade_filter, writer, company, dop, genre):
     """
-    Performs an advanced search of your movie archive.
-    
-    You can search by a partial movie TITLE and/or combine multiple filters.
+    Performs an advanced, combined search of your movie archive.
+
+    You can search by a partial movie TITLE and/or combine multiple filters
+    for a powerful and precise search.
 
     \b
     Examples:
@@ -298,51 +302,61 @@ def search(query, actor, director, keyword, collection, year_filter, decade_filt
       - Find all movies directed by Nolan with 'dark' in the title:
         $ poparch search "dark" -d "Nolan"
     """
-    from . import core
+    from . import core, database
 
-    # --- FINAL FIX for Smart Query Parsing ---
+    # --- FINAL, CORRECTED LOGIC ---
     title_query = query
-    if query and not year_filter:
+    final_year_filter = year_filter
+    final_genre_filter = genre
+    
+    # Start interactive mode ONLY if no arguments or options are provided at all.
+    if not any([query, actor, director, keyword, collection, year_filter, decade_filter, writer, company, dop, genre]):
+        click.echo(click.style("No search criteria provided. Starting interactive genre finder...", dim=True))
+        available_genres = database.get_all_unique_genres()
+        if not available_genres:
+            click.echo(click.style("No genres found in database to search by.", fg='yellow')); return
+
+        questions = [inquirer.List('choice', message="Which genre would you like to search for?", choices=available_genres)]
+        answers = inquirer.prompt(questions)
+        if not answers: return
+        final_genre_filter = answers['choice']
+    
+    # Smart Query Parsing for the positional argument
+    if query and not final_year_filter:
         parsed_title, parsed_year = core.parse_movie_title(query)
         if parsed_year:
             title_query = parsed_title
-            year_filter = parsed_year
-
-    # Sanitize the main query input
+            final_year_filter = parsed_year
+    
     if title_query:
         title_query = title_query.strip()
     
-    # --- Input Validation ---
+    # Input Validation
     if decade_filter and decade_filter % 10 != 0:
-        click.echo(click.style("Error: Decade must be a valid start year (e.g., 1980, 1990).", fg='red'))
-        return
+        click.echo(click.style("Error: Decade must be a valid start year.", fg='red')); return
     
-    # Check if any search criteria were provided
-    if not any([title_query, actor, director, keyword, collection, year_filter, decade_filter]):
-        click.echo("Please provide a search term or at least one filter.")
-        click.echo("Try 'poparch search --help' for options.")
-        return
-
     results = database.search_movies_advanced(
-        title=title_query, actor=actor,
-        director=director, keyword=keyword,
-        collection=collection, year=year_filter,
-        decade=decade_filter
+        title=title_query, actor=actor, director=director, keyword=keyword,
+        collection=collection, year=final_year_filter, decade=decade_filter, 
+        writer=writer, dop=dop, company=company, genre=final_genre_filter
     )
 
     if not results:
-        click.echo(click.style("No movies found matching your criteria.", fg='yellow'))
-        return
+        click.echo(click.style("No movies found matching your criteria.", fg='yellow')); return
 
-    # --- Rich "Info Card" Output Formatting ---
-    
-    # Build a descriptive header
+    # Build header from the final, correct variables
     header_parts = []
     if title_query: header_parts.append(f"title containing '{title_query}'")
     if actor: header_parts.append(f"actor '{actor}'")
     if director: header_parts.append(f"director '{director}'")
     if keyword: header_parts.append(f"keyword '{keyword}'")
     if collection: header_parts.append(f"collection '{collection}'")
+    if final_year_filter: header_parts.append(f"year '{final_year_filter}'")
+    if decade_filter: header_parts.append(f"decade '{decade_filter}s'")
+    if writer: header_parts.append(f"writer '{writer}'")
+    if company: header_parts.append(f"company '{company}'")
+    if dop: header_parts.append(f"dop '{dop}'")
+    if final_genre_filter: header_parts.append(f"genre '{final_genre_filter}'") # <-- FIX
     
     header = f"🔎 Found {len(results)} movies for " + " and ".join(header_parts)
     click.echo(click.style("\n" + header, bold=True, fg='cyan'))
@@ -366,16 +380,27 @@ def search(query, actor, director, keyword, collection, year_filter, decade_filt
             safe_echo(f"     {'Directed by:':<15} {movie['director']}")
         
         if actor and movie['cast']:
+            # For actors, showing the full cast list is often too long.
+            # So we find the first match and show that. This behavior is acceptable.
             matching_actor = next((a.strip() for a in movie['cast'].split(',') if actor.lower() in a.lower()), actor)
             safe_echo(f"     {'Featuring:':<15} {matching_actor}")
         
         if collection and movie['collection']:
             safe_echo(f"     {'Part of:':<15} {movie['collection']}")
+
+        if writer and movie['writers']:
+            # Display the full list of writers, not just the first match.
+            safe_echo(f"     {'Written by:':<15} {movie['writers']}")
+        
+        if company and movie['production_companies']:
+            # Display the full list of companies.
+            safe_echo(f"     {'Produced by:':<15} {movie['production_companies']}")
+        
+        if dop and movie['dop']:
+             safe_echo(f"     {'Cinematography:':<15} {movie['dop']}")
         
         # Bottom border for the card
-        # The separator starts with the same indentation as the main line
-        separator_char = "─"
-        separator = "  " + (separator_char * (total_line_length - 2))
+        separator = "  " + ("─" * (total_line_length - 2))
         click.echo(click.style(separator, fg='bright_black'))
 
 @cli.command()
@@ -707,49 +732,6 @@ def smart_info(query):
         _fetch_and_add_flow(final_title, final_year)
     else:
         click.echo(click.style(f"Could not find a specific movie for '{query}'. Please be more precise.", fg='yellow'))
-
-@cli.command()
-@click.argument('genre_name', required=False)
-def genre(genre_name):
-    """
-    Lists movies by genre. If no genre is provided, it shows an
-    interactive list of available genres to choose from.
-    """
-    
-    if genre_name:
-        results = database.get_movies_by_genre(genre_name)
-        if not results:
-            click.echo(f"No movies found with the genre '{genre_name}'.")
-            return
-    else:
-        available_genres = database.get_all_unique_genres()
-        if not available_genres:
-            click.echo(click.style("No genres found in the database.", fg='yellow'))
-            click.echo("Run 'poparch update' to fetch movie details first.")
-            return
-
-        click.echo(click.style("Please choose a genre from the list:", bold=True))
-        for i, g_name in enumerate(available_genres, 1):
-            click.echo(f"  {i}. {g_name}")
-
-        try:
-            choice_str = click.prompt("\nEnter the number of your choice", type=str)
-            choice_index = int(choice_str) - 1
-
-            if 0 <= choice_index < len(available_genres):
-                selected_genre = available_genres[choice_index]
-                results = database.get_movies_by_genre(selected_genre)
-            else:
-                click.echo(click.style("Invalid choice. Please enter a valid number.", fg='red'))
-                return
-        except (ValueError, IndexError):
-            click.echo(click.style("Invalid input. Please enter a number.", fg='red'))
-            return
-
-    display_genre = genre_name if genre_name else selected_genre
-    click.echo(click.style(f"\nMovies matching genre '{display_genre}':", bold=True))
-    for row in results:
-        safe_echo(f"  - {row['title']} ({row['year']})")
 
 @cli.command()
 @click.argument('filepath', type=click.Path(exists=True, dir_okay=False), required=False)

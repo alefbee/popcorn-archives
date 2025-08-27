@@ -49,10 +49,10 @@ Take a tour of a typical user session in this single demonstration. The animatio
 -   **Keep Your Archive Rich**: Use the `update` command to fetch rich metadata for your entire collection at once. The process is robust and provides a detailed summary of successes and failures.
 
 ### 🔎 Discovery & Exploration
--   **Smart & Interactive Info**: The powerful `info` command acts as your gateway to movie knowledge. It intelligently finds movies both locally and online, with interactive menus for ambiguous queries.
--   **Advanced Search & Filtering**: Instantly search your local archive with a rich `search` command that can filter by title, `--actor`, `--director`, `--keyword`, `--year`, `--decade` and `--collection`.
+-   **Smart & Interactive `info`**: A powerful command that finds movies both locally and online, with interactive menus for ambiguous queries.
+-   **Advanced & Unified Search**: Instantly search your local archive with a single, powerful `search` command that can combine multiple filters like `--actor`, `--director`, `--writer`, `--genre`, `--year`, `--decade`, and more.
 -   **Personalized Stats Dashboard**: Uncover insights into your collection and personal taste with the beautiful `stats` dashboard, which analyzes your top genres, favorite directors, and more.
--   **Interactive Genre Filtering**: Use the `genre` command without arguments to get a dynamic, numbered list of all genres in your archive to choose from.
+-   **Interactive Genre Finder**: Running `poparch search` without arguments starts a dynamic, menu-based genre finder.
 
 ### 🔧 Under the Hood
 -   **Rich Movie Details**: Fetches comprehensive movie information—including cast, runtime, collection, and IMDb links—from TMDb and caches it locally.
@@ -140,16 +140,17 @@ Here is a summary of the available commands:
 | **Management** | | |
 | `add` | Adds a new movie to the archive. | `poparch add "The Kid 1921"` |
 | `scan` | Scans a directory for movie folders. | `poparch scan /path/to/movies` |
-| `import`| Imports movies from a CSV file. | `poparch import movies.csv` |
+| `import`| Imports from a CSV or Letterboxd ZIP. | `poparch import --letterboxd file.zip` |
 | `export`| Exports the archive to a CSV. | `poparch export backup.csv` |
-| `delete`| Deletes a specific movie. | `poparch delete "The Matrix 1999"` |
+| `rate` | Rates a movie on a 1-10 scale. | `poparch rate "The Matrix" 10` |
+| `watch` | Marks a movie as watched. | `poparch watch "The Matrix"` |
+| `unwatch`| Marks a movie as unwatched. | `poparch unwatch "The Matrix"` |
+| `delete`| Deletes a specific movie. | `poparch delete "The Matrix"` |
 | `clear` | Clears the entire movie archive. | `poparch clear` |
-| `rate` | Rates a movie in your archive | `poparch rate "The Matrix 1999" 10` |
 | **Information & Search** | | |
 | `info` | Smartly finds a movie locally or online. | `poparch info "Pulp Fiction"` |
-| `search`| Advanced search with filters. | `poparch search -d "Nolan"` |
+| `search`| Advanced search with filters. | `poparch search -d "Nolan" -y 2010` |
 | `random`| Suggests a random movie. | `poparch random --unwatched` |
-| `genre` | Lists movies by genre (interactive). | `poparch genre` |
 | `stats` | Displays archive statistics. | `poparch stats` |
 | **Watched Status** | | |
 | `watch` | Marks a movie as watched. | `poparch watch "The Matrix 1999"` |
@@ -172,7 +173,7 @@ Popcorn Archives is actively being developed. Here's a look at some of the excit
     -   Add a `--json` flag to commands like `info`, `search`, and `stats` to output data in a machine-readable JSON format, allowing `poparch` to be used in scripts.
 -   [ ] **Advanced Configuration**:
     -   Expand the `config` command to allow users to customize aspects of the application, such as default output formats or color schemes.
--   [ ] **Combined Filtering**:
+-   [x] **Combined Filtering**:
     -   Allow combining multiple filters in the `search` command for even more powerful queries.
     -   Example: `poparch search --decade 1990 --genre "Action"`
 

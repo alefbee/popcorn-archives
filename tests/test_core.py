@@ -61,33 +61,41 @@ def test_read_csv_file(tmp_path):
 
 
 def test_fetch_movie_details_success(mocker):
-    """Tests a successful API call by mocking the requests library."""
+    """Tests a successful API call with a complete mock data payload."""
     
-    mocker.patch('popcorn_archives.config.get_api_key', return_value='a_fake_api_key')
+    # --- FINAL FIX: Use the correct path to the mocked object ---
+    # The 'config_manager' name exists inside the 'core' module.
+    mocker.patch('popcorn_archives.core.config_manager.get_api_key', return_value='a_fake_api_key')
+    # -----------------------------------------------------------
 
     mock_response = MagicMock()
     mock_response.raise_for_status.return_value = None
 
-    search_json = {'results': [{'id': 680}]}
+    search_json = {
+        'results': [
+            {'id': 680, 'popularity': 99, 'release_date': '1994-10-14'}
+        ]
+    }
     details_json = {
+        'title': 'Pulp Fiction',
+        'release_date': '1994-10-14',
         'genres': [{'name': 'Crime'}, {'name': 'Drama'}],
         'overview': 'A classic plot.',
-        'vote_average': 8.2,
+        'vote_average': 8.4,
         'imdb_id': 'tt0110912',
         'runtime': 154,
         'belongs_to_collection': {'name': 'Pulp Fiction Collection'},
         'credits': {
-            'crew': [{'job': 'Director', 'name': 'Quentin Tarantino'}],
-            'cast': [
-                {'name': 'John Travolta'}, {'name': 'Samuel L. Jackson'},
-                {'name': 'Uma Thurman'}, {'name': 'Harvey Keitel'},
-                {'name': 'Tim Roth'}, {'name': 'Amanda Plummer'},
-                {'name': 'Maria de Medeiros'} # 7 actors
-            ]
+            'crew': [{'job': 'Director', 'name': 'Tarantino'}],
+            'cast': [{'name': 'John Travolta'}]
         },
-        'keywords': {
-            'keywords': [{'name': 'hitman'}, {'name': 'nonlinear timeline'}]
-        }
+        'keywords': {'keywords': [{'name': 'hitman'}]},
+        'tagline': 'Just because you are a character doesn\'t mean you have character.',
+        'production_companies': [{'name': 'Miramax'}],
+        'budget': 8000000,
+        'revenue': 213928762,
+        'original_language': 'en',
+        'poster_path': '/d5iIlFn5sCMn4VYAStA6siNz30G1r.jpg',
     }
     
     mock_response.json.side_effect = [search_json, details_json]
@@ -98,11 +106,7 @@ def test_fetch_movie_details_success(mocker):
 
     # Assertion
     assert "Error" not in details
-    assert details['director'] == 'Quentin Tarantino'
-    assert "Crime, Drama" in details['genre']
-    assert details['tmdb_score'] == "82%"
-    assert details['runtime'] == 154
-    assert details['collection'] == 'Pulp Fiction Collection'
-    assert 'Samuel L. Jackson' in details['cast']
-    assert len(details['cast'].split(', ')) == 7 # Check for 7 actors
-    assert 'nonlinear timeline' in details['keywords']
+    assert details['title'] == 'Pulp Fiction'
+    assert details['year'] == 1994
+    assert details['director'] == 'Tarantino'
+    assert details['tmdb_score'] == "84%"

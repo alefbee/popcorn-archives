@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2025-08-27
+
+### Added
+- **Expanded Data Model**: The database schema is now significantly richer, storing new details like `tagline`, `writers`, `director of photography`, `budget`, `revenue`, and `production companies`.
+- **New Search Filters**: The `search` command is now even more powerful with new filters for `--writer` (`-w`), `--company` (`-p`), and `--dop`.
+
+### Changed
+- **BREAKING CHANGE: Unified `search` Command**: The separate `genre` command has been removed. Its functionality is now fully integrated into the `search` command.
+    - Running `poparch search` without any arguments now starts the interactive genre finder.
+    - A new `--genre` (`-g`) flag has been added to `search` for direct filtering.
+- **Combined Filtering**: The `search` command now fully supports combining multiple filters (e.g., `poparch search --decade 1990 --genre "Action"`) for highly specific queries.
+
+### Fixed
+- **API Logic**: Improved the API fetching logic to always prioritize the most popular movie match, fixing issues with ambiguous titles like "Lamb (2021)".
+- **Data Integrity**: Resolved a critical bug where movies with similar but not identical titles (e.g., "Mission Impossible" vs. "Mission: Impossible") could create duplicate entries. The `update --cleanup` command is now much more powerful at finding and merging these.
+- **Search Query Parsing**: The `search` command can now intelligently parse the year from a query string like `"About Elly 2009"`.
+
+### Removed
+- The standalone `genre` command has been removed in favor of the unified `search` command.
+
 ## [3.4.0] - 2025-08-26
 
 ### Added

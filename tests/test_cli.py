@@ -1,66 +1,7 @@
 from click.testing import CliRunner
 from popcorn_archives.cli import cli, smart_info
 from unittest.mock import MagicMock
-
-
-def test_genre_command_direct_filter(mocker):
-    """Tests the 'genre' command in direct (non-interactive) mode."""
-    runner = CliRunner()
-    
-    mocker.patch('popcorn_archives.database.get_movies_by_genre', return_value=[
-        {'title': 'Action Movie 1', 'year': 2020, 'genre': 'Action'},
-    ])
-    
-    result = runner.invoke(cli, ['genre', 'Action'])
-    
-    assert result.exit_code == 0
-    assert "Movies matching genre 'Action'" in result.output
-    assert "Action Movie 1" in result.output
-
-def test_genre_command_interactive_success(mocker):
-    """Tests the interactive mode with a valid user choice."""
-    runner = CliRunner()
-    
-
-    mocker.patch('popcorn_archives.database.get_all_unique_genres', return_value=['Action', 'Comedy', 'Drama'])
-    
-    mock_get_by_genre = mocker.patch('popcorn_archives.database.get_movies_by_genre', return_value=[
-        {'title': 'Comedy Movie', 'year': 2022, 'genre': 'Comedy'}
-    ])
-    
-    result = runner.invoke(cli, ['genre'], input='2\n')
-    
-    assert result.exit_code == 0
-    assert "Please choose a genre" in result.output
-    
-    mock_get_by_genre.assert_called_once_with('Comedy')
-    
-    assert "Movies matching genre 'Comedy'" in result.output
-    assert "Comedy Movie" in result.output
-
-def test_genre_command_interactive_invalid_input(mocker):
-    """Tests interactive mode with various invalid inputs."""
-    runner = CliRunner()
-    
-    mocker.patch('popcorn_archives.database.get_all_unique_genres', return_value=['Action', 'Comedy', 'Drama'])
-
-    result_bad_str = runner.invoke(cli, ['genre'], input='abc\n')
-    assert result_bad_str.exit_code == 0
-    assert "Invalid input. Please enter a number." in result_bad_str.output
-
-    result_bad_num = runner.invoke(cli, ['genre'], input='99\n')
-    assert result_bad_num.exit_code == 0
-    assert "Invalid choice. Please enter a valid number." in result_bad_num.output
-
-def test_genre_command_no_genres_available(mocker):
-    """Tests interactive mode when the database has no genres."""
-    runner = CliRunner()
-    mocker.patch('popcorn_archives.database.get_all_unique_genres', return_value=[])
-    
-    result = runner.invoke(cli, ['genre'])
-    
-    assert result.exit_code == 0
-    assert "No genres found in the database." in result.output
+import pytest
 
 def test_smart_info_precise_query_found_locally(mocker):
     """Tests `info Title YYYY` when the movie exists in the local DB."""
@@ -223,31 +164,6 @@ def test_update_command(mocker):
     mock_fetch.assert_called_once_with('Movie To Update', 2023)
     mock_db_update.assert_called_once_with('Movie To Update', 2023, mock_api_response)
 
-def test_advanced_search_by_director(mocker):
-    """Tests `search --director` and the rich output format."""
-    mock_results = [
-        {'title': 'Inception', 'year': 2010, 'director': 'Christopher Nolan', 'cast': '...'}
-    ]
-    mocker.patch('popcorn_archives.database.search_movies_advanced', return_value=mock_results)
-    
-    runner = CliRunner()
-    result = runner.invoke(cli, ['search', '--director', 'Nolan'])
-    
-    assert result.exit_code == 0
-    assert "Found 1 movies for director 'Nolan'" in result.output
-    assert "Inception" in result.output
-    assert "Directed by:" in result.output
-    assert "Christopher Nolan" in result.output
-
-def test_advanced_search_no_results(mocker):
-    """Tests `search` when no movies match the criteria."""
-    mocker.patch('popcorn_archives.database.search_movies_advanced', return_value=[])
-    
-    runner = CliRunner()
-    result = runner.invoke(cli, ['search', '--actor', 'Nonexistent Actor'])
-    
-    assert result.exit_code == 0
-    assert "No movies found matching your criteria." in result.output
 
 def test_rate_command_success(mocker):
     """Tests the 'rate' command with valid input."""
@@ -319,3 +235,89 @@ def test_update_cleanup_mode_standalone(mocker):
     assert "Successfully merged and deleted 2 duplicate movies." in result.output
     
     assert "Cleanup complete." in result.output
+
+@pytest.mark.parametrize(
+    "command_args, mock_db_return, expected_db_params, expected_output",
+    [
+        # --- Test Cases for Direct Filtering ---
+        (
+            ['--director', 'Nolan'],
+            [{'title': 'Inception', 'year': 2010, 'director': 'Christopher Nolan'}],
+            {'director': 'Nolan'},
+            ["Found 1 movies for director 'Nolan'", "Inception"]
+        ),
+        (
+            ['--year', '1999'],
+            [{'title': 'The Matrix', 'year': 1999}],
+            {'year': 1999},
+            ["Found 1 movies for year '1999'", "The Matrix"]
+        ),
+        # --- Test Case for Smart Query Parsing ---
+        (
+            ['The Matrix 1999'],
+            [{'title': 'The Matrix', 'year': 1999}],
+            {'title': 'The Matrix', 'year': 1999},
+            ["title containing 'The Matrix'", "year '1999'"]
+        ),
+        # --- Test Case for Combined Filtering ---
+        (
+            ['Dune', '--actor', 'Chalamet'],
+            [{'title': 'Dune', 'year': 2021, 'cast': 'Timothée Chalamet'}],
+            {'title': 'Dune', 'actor': 'Chalamet'},
+            ["title containing 'Dune'", "actor 'Chalamet'"]
+        ),
+        # --- Test Case for No Results ---
+        (
+            ['--actor', 'Unknown Actor'],
+            [],
+            {'actor': 'Unknown Actor'},
+            ["No movies found matching your criteria"]
+        ),
+    ]
+)
+def test_search_command_direct_filters(mocker, command_args, mock_db_return, expected_db_params, expected_output):
+    """Tests various scenarios for direct, non-interactive search."""
+    # Mock the database function
+    mock_search_db = mocker.patch('popcorn_archives.database.search_movies_advanced', return_value=mock_db_return)
+    
+    runner = CliRunner()
+    result = runner.invoke(cli, ['search'] + command_args)
+    
+    assert result.exit_code == 0
+    
+    # Build the full expected parameters for the database call
+    full_params = {
+        'title': None, 'actor': None, 'director': None, 'keyword': None, 'collection': None,
+        'year': None, 'decade': None, 'writer': None, 'dop': None, 'company': None, 'genre': None
+    }
+    full_params.update(expected_db_params)
+    mock_search_db.assert_called_once_with(**full_params)
+    
+    # Check that all expected strings are in the output
+    for text in expected_output:
+        assert text in result.output
+
+def test_search_command_interactive_genre(mocker):
+    """Tests the interactive genre search when no arguments are provided."""
+    # Mock the functions that will be called
+    mocker.patch('popcorn_archives.database.get_all_unique_genres', return_value=['Action', 'Comedy'])
+    mock_search_db = mocker.patch('popcorn_archives.database.search_movies_advanced', return_value=[
+        {'title': 'Die Hard', 'year': 1988}
+    ])
+    
+    # Mock the user's choice from the inquirer menu
+    mocker.patch('inquirer.prompt', return_value={'choice': 'Action'})
+    
+    runner = CliRunner()
+    result = runner.invoke(cli, ['search']) # Run with no arguments
+    
+    assert result.exit_code == 0
+    assert "Starting interactive genre finder..." in result.output
+    assert "Found 1 movies for genre 'Action'" in result.output
+    assert "Die Hard" in result.output
+    
+    # Verify the database was called with the user's choice
+    mock_search_db.assert_called_once_with(
+        title=None, actor=None, director=None, keyword=None, collection=None,
+        year=None, decade=None, writer=None, dop=None, company=None, genre='Action'
+    )

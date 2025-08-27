@@ -21,9 +21,7 @@ def init_db():
     Initializes and migrates the database schema. This function is safe to run
     multiple times and handles both new and old database versions.
     """
-
     with get_db_connection() as conn:
-        # Create the base table if it doesn't exist
         conn.execute('''
             CREATE TABLE IF NOT EXISTS movies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,19 +31,15 @@ def init_db():
             )
         ''')
 
-        # --- Migration Logic ---
         cursor = conn.execute("PRAGMA table_info(movies)")
         existing_columns = {row['name'] for row in cursor.fetchall()}
 
-        # Rename imdb_rating to tmdb_score for legacy users
         if 'imdb_rating' in existing_columns and 'tmdb_score' not in existing_columns:
             click.echo("Database migration: Renaming column 'imdb_rating' to 'tmdb_score'...")
             conn.execute('ALTER TABLE movies RENAME COLUMN imdb_rating TO tmdb_score')
-            # We need to refetch columns after altering the table
             cursor = conn.execute("PRAGMA table_info(movies)")
             existing_columns = {row['name'] for row in cursor.fetchall()}
 
-        # Define all columns that should exist in the latest version
         expected_columns = {
             "watched": "INTEGER NOT NULL DEFAULT 0",
             "genre": "TEXT",
@@ -57,10 +51,17 @@ def init_db():
             "cast": "TEXT",
             "keywords": "TEXT",
             "collection": "TEXT",
-            "user_rating": "INTEGER"
+            "user_rating": "INTEGER",
+            "tagline": "TEXT",
+            "writers": "TEXT",
+            "dop": "TEXT",
+            "original_language": "TEXT",
+            "poster_path": "TEXT",
+            "budget": "INTEGER",
+            "revenue": "INTEGER",
+            "production_companies": "TEXT"
         }
 
-        # Add any missing columns
         for col_name, col_type in expected_columns.items():
             if col_name not in existing_columns:
                 click.echo(f"Database migration: Adding column '{col_name}'...")
@@ -229,16 +230,25 @@ def get_movie_details(title, year):
         )
         return cursor.fetchone()
 
-def update_movie_details(title, year, details):
-    """Updates a movie record with details fetched from an API."""
+def update_movie_details(original_title, original_year, details):
+    """Updates a movie record with the full, rich dataset from the API."""
+    # --- FINAL VERSION with all new fields ---
     sql = """
         UPDATE movies SET
-            genre = ?, director = ?, plot = ?, tmdb_score = ?, imdb_id = ?,
-            runtime = ?, "cast" = ?, keywords = ?, collection = ?
-        WHERE title = ? AND year = ?
+            title = ?, year = ?, genre = ?, director = ?, plot = ?,
+            tmdb_score = ?, imdb_id = ?, runtime = ?, "cast" = ?,
+            keywords = ?, collection = ?, user_rating = ?, tagline = ?,
+            writers = ?, dop = ?, original_language = ?, poster_path = ?,
+            budget = ?, revenue = ?, production_companies = ?
+        WHERE LOWER(title) = LOWER(?) AND year = ?
     """
     with get_db_connection() as conn:
+        current_data = conn.execute("SELECT user_rating FROM movies WHERE LOWER(title) = LOWER(?) AND year = ?", (original_title, original_year)).fetchone()
+        user_rating = current_data['user_rating'] if current_data else None
+
         conn.execute(sql, (
+            details.get('title', original_title),
+            details.get('year', original_year),
             details.get('genre'),
             details.get('director'),
             details.get('plot'),
@@ -248,8 +258,16 @@ def update_movie_details(title, year, details):
             details.get('cast'),
             details.get('keywords'),
             details.get('collection'),
-            title,
-            year
+            user_rating,
+            details.get('tagline'),
+            details.get('writers'),
+            details.get('dop'),
+            details.get('original_language'),
+            details.get('poster_path'),
+            details.get('budget'),
+            details.get('revenue'),
+            details.get('production_companies'),
+            original_title, original_year
         ))
         conn.commit()
 
@@ -265,17 +283,22 @@ def get_movies_by_genre(genre_query):
 def get_movies_missing_details():
     """
     Returns all movies that are missing one or more key details.
-    This also handles cases where a default 'N/A' value was stored.
+    This query is designed to find records from older versions.
     """
     with get_db_connection() as conn:
-        # A movie is considered incomplete if ANY of these key fields are NULL
-        # OR if they contain our default placeholder 'N/A'.
         sql = """
             SELECT title, year FROM movies WHERE
-            runtime IS NULL OR
-            genre IS NULL OR genre = 'N/A' OR
-            director IS NULL OR director = 'N/A' OR
-            plot IS NULL OR plot = 'N/A'
+                runtime IS NULL OR
+                genre IS NULL OR genre = 'N/A' OR
+                director IS NULL OR director = 'N/A' OR
+                plot IS NULL OR plot = 'N/A' OR
+                tagline IS NULL OR
+                writers IS NULL OR
+                dop IS NULL OR
+                poster_path IS NULL OR
+                budget IS NULL OR
+                revenue IS NULL OR
+                production_companies IS NULL
         """
         cursor = conn.execute(sql)
         return cursor.fetchall()
@@ -296,16 +319,16 @@ def get_all_unique_genres():
             
         return sorted(list(all_genres))
     
-def search_movies_advanced(title=None, director=None, actor=None, keyword=None, collection=None, year=None, decade=None):
+def search_movies_advanced(title=None, director=None, actor=None, keyword=None, collection=None, year=None, decade=None, writer=None, dop=None, company=None, genre=None):
     """
-    Performs an advanced search with multiple optional criteria.
-    All text-based searches are case-insensitive and partial.
+    Performs an advanced search with multiple dynamic criteria.
     """
     with get_db_connection() as conn:
-        base_query = 'SELECT title, year, director, "cast", collection, keywords FROM movies'
+        base_query = 'SELECT title, year, director, "cast", collection, keywords, writers, dop, production_companies, genre FROM movies'
         conditions = []
         params = []
 
+        # Dynamically build the WHERE clauses based on provided filters
         if title:
             conditions.append("title LIKE ? COLLATE NOCASE")
             params.append(f'%{title}%')
@@ -327,15 +350,24 @@ def search_movies_advanced(title=None, director=None, actor=None, keyword=None, 
         if decade:
             conditions.append("year BETWEEN ? AND ?")
             params.extend([decade, decade + 9])
+        if writer:
+            conditions.append("writers LIKE ? COLLATE NOCASE")
+            params.append(f'%{writer}%')
+        if dop:
+            conditions.append("dop LIKE ? COLLATE NOCASE")
+            params.append(f'%{dop}%')
+        if company:
+            conditions.append("production_companies LIKE ? COLLATE NOCASE")
+            params.append(f'%{company}%')
+        if genre:
+            conditions.append("genre LIKE ? COLLATE NOCASE")
+            params.append(f'%{genre}%')
+
         if not conditions:
-            # If no filters are provided, it's better to return an empty list.
             return []
 
-        # Join the conditions with ' AND '
         query = f"{base_query} WHERE {' AND '.join(conditions)} ORDER BY year, title"
-
-        cursor = conn.execute(query, tuple(params))
-        return cursor.fetchall()
+        return conn.execute(query, tuple(params)).fetchall()
     
 def get_movies_by_name_list(name_list):
     """
