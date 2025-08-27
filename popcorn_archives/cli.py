@@ -311,7 +311,6 @@ def search(query, actor, director, keyword, collection, year_filter, decade_filt
     
     # Start interactive mode ONLY if no arguments or options are provided at all.
     if not any([query, actor, director, keyword, collection, year_filter, decade_filter, writer, company, dop, genre]):
-        click.echo(click.style("No search criteria provided. Starting interactive genre finder...", dim=True))
         available_genres = database.get_all_unique_genres()
         if not available_genres:
             click.echo(click.style("No genres found in database to search by.", fg='yellow')); return

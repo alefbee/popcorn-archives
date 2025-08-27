@@ -19,8 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **API Logic**: Improved the API fetching logic to always prioritize the most popular movie match, fixing issues with ambiguous titles like "Lamb (2021)".
-- **Data Integrity**: Resolved a critical bug where movies with similar but not identical titles (e.g., "Mission Impossible" vs. "Mission: Impossible") could create duplicate entries. The `update --cleanup` command is now much more powerful at finding and merging these.
-- **Search Query Parsing**: The `search` command can now intelligently parse the year from a query string like `"About Elly 2009"`.
 
 ### Removed
 - The standalone `genre` command has been removed in favor of the unified `search` command.
