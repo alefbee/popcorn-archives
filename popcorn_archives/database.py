@@ -231,8 +231,15 @@ def get_movie_details(title, year):
         return cursor.fetchone()
 
 def update_movie_details(original_title, original_year, details):
-    """Updates a movie record with the full, rich dataset from the API."""
-    # --- FINAL VERSION with all new fields ---
+    """
+    Updates a movie record with the full, rich dataset from the API while preserving
+    the original title.
+    
+    Args:
+        original_title (str): The original title of the movie as entered by user
+        original_year (int): The original year of the movie
+        details (dict): The movie details fetched from the API
+    """
     sql = """
         UPDATE movies SET
             title = ?, year = ?, genre = ?, director = ?, plot = ?,
@@ -242,13 +249,19 @@ def update_movie_details(original_title, original_year, details):
             budget = ?, revenue = ?, production_companies = ?
         WHERE LOWER(title) = LOWER(?) AND year = ?
     """
+    
     with get_db_connection() as conn:
-        current_data = conn.execute("SELECT user_rating FROM movies WHERE LOWER(title) = LOWER(?) AND year = ?", (original_title, original_year)).fetchone()
+        # Preserve existing user rating
+        current_data = conn.execute(
+            "SELECT user_rating FROM movies WHERE LOWER(title) = LOWER(?) AND year = ?",
+            (original_title, original_year)
+        ).fetchone()
         user_rating = current_data['user_rating'] if current_data else None
 
+        # Always use the original title instead of the one from API
         conn.execute(sql, (
-            details.get('title', original_title),
-            details.get('year', original_year),
+            original_title,  # Always use original title
+            details.get('year', original_year),  # Fallback to original year if API year is missing
             details.get('genre'),
             details.get('director'),
             details.get('plot'),
@@ -267,7 +280,8 @@ def update_movie_details(original_title, original_year, details):
             details.get('budget'),
             details.get('revenue'),
             details.get('production_companies'),
-            original_title, original_year
+            original_title,
+            original_year
         ))
         conn.commit()
 

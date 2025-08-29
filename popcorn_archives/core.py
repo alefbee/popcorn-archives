@@ -6,6 +6,7 @@ from tqdm import tqdm
 from . import config as config_manager
 import zipfile
 from . import logger as app_logger
+from fuzzywuzzy import fuzz
 
 def parse_movie_title(name):
     """
@@ -70,6 +71,14 @@ BASE_URL = "https://api.themoviedb.org/3"
 def fetch_movie_details_from_api(title, year=None, ignore_year_in_search=False):
     """
     Fetches a rich and comprehensive set of movie details from TMDb.
+    
+    Args:
+        title (str): The movie title to search for
+        year (int, optional): The release year of the movie
+        ignore_year_in_search (bool): Whether to ignore year in initial search
+    
+    Returns:
+        dict: Movie details or error message
     """
     api_key = config_manager.get_api_key()
     if not api_key:
@@ -78,8 +87,12 @@ def fetch_movie_details_from_api(title, year=None, ignore_year_in_search=False):
     headers = {"accept": "application/json"}
     
     try:
-        # Step 1: Search for the movie
-        search_params = {'api_key': api_key, 'query': title}
+        # Step 1: Search for the movie with exact title matching
+        search_params = {
+            'api_key': api_key,
+            'query': title,
+            'language': 'en-US'
+        }
         if year and not ignore_year_in_search:
             search_params['year'] = year
             
@@ -88,50 +101,84 @@ def fetch_movie_details_from_api(title, year=None, ignore_year_in_search=False):
         search_data = search_response.json()
 
         if not search_data.get('results'):
+            # If no results, try searching without year
+            if year and not ignore_year_in_search:
+                return fetch_movie_details_from_api(title, year, True)
             return {"Error": f"Movie '{title}' not found on TMDb."}
 
-        # Step 2: Intelligently find the best match from the results
-        sorted_results = sorted(search_data['results'], key=lambda r: r.get('popularity', 0), reverse=True)
+        # Step 2: Improved matching algorithm
+        sorted_results = sorted(search_data['results'], 
+                              key=lambda r: (
+                                  # Exact title match gets highest priority
+                                  r.get('title', '').lower() == title.lower(),
+                                  # Then by release year match if provided
+                                  year and str(year) in r.get('release_date', ''),
+                                  # Then by popularity
+                                  r.get('popularity', 0)
+                              ), 
+                              reverse=True)
         
-        best_match = sorted_results[0] # Default to the most popular result
-        if year:
-            # If a year was provided, try to find a perfect year match within the popular results.
-            # If not found, we still stick with the most popular one overall.
-            year_match = next((r for r in sorted_results if str(year) in r.get('release_date', '')), None)
-            if year_match:
-                best_match = year_match
-        
-        # If the search was broad (no year) and returned multiple results, let the user choose.
+        # If multiple results and year wasn't provided, check if we should ask user
         if len(sorted_results) > 1 and not year:
-             return {"MultipleResults": [{'title': r.get('title'), 'year': r.get('release_date', 'N/A')[:4]} for r in sorted_results[:5]]}
+            # Filter results that are too different from the search query
+            relevant_results = [r for r in sorted_results[:5] 
+                              if fuzz.ratio(r.get('title', '').lower(), title.lower()) > 60]
+            
+            if len(relevant_results) > 1:
+                return {"MultipleResults": [
+                    {
+                        'title': r.get('title'),
+                        'year': r.get('release_date', 'N/A')[:4],
+                        'overview': r.get('overview', '')[:100] + '...' if r.get('overview') else 'N/A'
+                    } 
+                    for r in relevant_results
+                ]}
+
+        best_match = sorted_results[0]
         
+        # Additional verification for the best match
+        title_similarity = fuzz.ratio(best_match.get('title', '').lower(), title.lower())
+        if title_similarity < 60 and not ignore_year_in_search:
+            # If similarity is too low, try without year constraint
+            return fetch_movie_details_from_api(title, year, True)
+
         movie_id = best_match['id']
 
-        # Step 3: Get full details for the chosen movie ID
+        # Step 3: Get full details
         details_params = {'api_key': api_key, 'append_to_response': 'credits,keywords'}
-        details_response = requests.get(f"{BASE_URL}/movie/{movie_id}", params=details_params, headers=headers, timeout=10)
+        details_response = requests.get(f"{BASE_URL}/movie/{movie_id}", 
+                                     params=details_params, 
+                                     headers=headers, 
+                                     timeout=10)
         details_response.raise_for_status()
         details = details_response.json()
 
-        # Step 4: Process and format all data
+        # Step 4: Process crew information
         crew = details.get('credits', {}).get('crew', [])
         directors = [p['name'] for p in crew if p.get('job') == 'Director']
-        writers = ", ".join(sorted(list(set(p['name'] for p in crew if p.get('department') == 'Writing'))))
-        dop = next((p['name'] for p in crew if p.get('job') == 'Director of Photography'), "N/A")
+        writers = ", ".join(sorted(list(set(
+            p['name'] for p in crew if p.get('department') == 'Writing'
+        ))))
+        dop = next((p['name'] for p in crew if p.get('job') == 'Director of Photography'), 
+                  "N/A")
         
-        cast = ", ".join([p['name'] for p in details.get('credits', {}).get('cast', [])[:7]])
-        keywords = ", ".join([k['name'] for k in details.get('keywords', {}).get('keywords', [])])
+        # Step 5: Process other details
+        cast = ", ".join([p['name'] for p in details.get('credits', {})
+                         .get('cast', [])[:7]])
+        keywords = ", ".join([k['name'] for k in details.get('keywords', {})
+                            .get('keywords', [])])
         tmdb_score = f"{int(details.get('vote_average', 0) * 10)}%"
         collection_info = details.get('belongs_to_collection')
-        companies = ", ".join([c['name'] for c in details.get('production_companies', [])[:3]])
-        
-        final_title = details.get('title', title)
+        companies = ", ".join([c['name'] for c in details.get('production_companies', 
+                                                            [])[:3]])
+
+        # Keep original title if provided
         final_year = int(details.get('release_date', '0-0-0')[:4])
 
-        app_logger.log_info(f"Successfully fetched details for '{final_title}' from API.")
+        app_logger.log_info(f"Successfully fetched details for '{title}' from API.")
 
         return {
-            "title": final_title,
+            "title": title,  # Keep original title
             "year": final_year,
             "genre": ", ".join([g['name'] for g in details.get('genres', [])]),
             "director": ", ".join(directors) if directors else "N/A",
@@ -139,7 +186,8 @@ def fetch_movie_details_from_api(title, year=None, ignore_year_in_search=False):
             "tmdb_score": tmdb_score,
             "imdb_id": details.get('imdb_id'),
             "runtime": details.get('runtime'),
-            "cast": cast, "keywords": keywords,
+            "cast": cast,
+            "keywords": keywords,
             "collection": collection_info['name'] if collection_info else None,
             "tagline": details.get('tagline'),
             "writers": writers,
@@ -159,6 +207,7 @@ def fetch_movie_details_from_api(title, year=None, ignore_year_in_search=False):
     except Exception as e:
         app_logger.log_error(f"An unexpected error occurred for '{title} ({year})': {e}")
         return {"Error": f"An unexpected error occurred"}
+    
     
 def process_letterboxd_zip(filepath):
     """

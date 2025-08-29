@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.1] - 2025-08-30
+
+### Fixed
+- **Critical Data Integrity**: Fixed two major issues with movie data handling:
+  1. Resolved crashes caused by UNIQUE constraint violations during updates when the API returns alternative titles
+  2. Fixed incorrect movie matching that could cause wrong metadata to be fetched (e.g., "The Hunt" being confused with "Snow White and the Huntsman")
+- **Title Preservation**: The application now always preserves the original title entered by the user, preventing unwanted title changes during updates
+- **Improved Matching**: Added fuzzy string matching with a 60% similarity threshold to ensure more accurate movie identification
+- **Robust Error Handling**: The update process now gracefully handles database conflicts and continues processing remaining movies
+
 ## [4.0.0] - 2025-08-27
 
 ### Added

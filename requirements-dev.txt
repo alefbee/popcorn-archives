@@ -4,15 +4,18 @@ charset-normalizer==3.4.3
 click==8.2.1
 colorama==0.4.6
 editor==1.6.6
+fuzzywuzzy==0.18.0
 idna==3.10
 iniconfig==2.1.0
 inquirer==3.4.1
+Levenshtein==0.27.1
 packaging==25.0
 pluggy==1.6.0
--e git+https://github.com/alefbee/popcorn-archives.git@abfd2e352eb3859a134cc927a3cb8744de8681ba#egg=popcorn_archives
+-e git+https://github.com/alefbee/popcorn-archives.git@95cd0e1a981ed2f6d9496bc040b81a58d1015a0a#egg=popcorn_archives
 Pygments==2.19.2
 pytest==8.4.1
 pytest-mock==3.14.1
+python-Levenshtein==0.27.1
 RapidFuzz==3.13.0
 readchar==4.2.1
 requests==2.32.4

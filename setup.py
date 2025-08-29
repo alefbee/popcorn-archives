@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='popcorn-archives',
-    version='4.0.0',
+    version='4.0.1',
     packages=find_packages(),
     license="GPL-3.0-or-later",
     include_package_data=True,
@@ -12,6 +12,7 @@ setup(
         'requests',
         'inquirer',
         'thefuzz',
+        'fuzzywuzzy',
     ],
     entry_points={
         'console_scripts': [
