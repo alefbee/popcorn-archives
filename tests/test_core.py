@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import MagicMock
 from popcorn_archives import core
+from thefuzz import fuzz
 
 
 def test_parse_with_parentheses():
@@ -63,19 +64,30 @@ def test_read_csv_file(tmp_path):
 def test_fetch_movie_details_success(mocker):
     """Tests a successful API call with a complete mock data payload."""
     
-    # --- FINAL FIX: Use the correct path to the mocked object ---
-    # The 'config_manager' name exists inside the 'core' module.
+    # Mock the config manager
     mocker.patch('popcorn_archives.core.config_manager.get_api_key', return_value='a_fake_api_key')
-    # -----------------------------------------------------------
-
+    
+    # Mock the fuzz.ratio function to return high similarity for our test cases
+    mocker.patch('popcorn_archives.core.fuzz.ratio', side_effect=lambda x, y: 
+        95 if ('pulp' in x.lower() and 'fic' in x.lower()) else 60
+    )
+    
     mock_response = MagicMock()
     mock_response.raise_for_status.return_value = None
-
+    
+    # Update search results to include more fields needed for sorting
     search_json = {
         'results': [
-            {'id': 680, 'popularity': 99, 'release_date': '1994-10-14'}
+            {
+                'id': 680,
+                'title': 'Pulp Fiction',
+                'popularity': 99,
+                'release_date': '1994-10-14',
+                'overview': 'A classic plot.'
+            }
         ]
     }
+    
     details_json = {
         'title': 'Pulp Fiction',
         'release_date': '1994-10-14',
@@ -86,27 +98,50 @@ def test_fetch_movie_details_success(mocker):
         'runtime': 154,
         'belongs_to_collection': {'name': 'Pulp Fiction Collection'},
         'credits': {
-            'crew': [{'job': 'Director', 'name': 'Tarantino'}],
-            'cast': [{'name': 'John Travolta'}]
+            'crew': [
+                {'job': 'Director', 'name': 'Tarantino'},
+                {'department': 'Writing', 'name': 'Quentin Tarantino'},
+                {'job': 'Director of Photography', 'name': 'Andrzej Sekula'}
+            ],
+            'cast': [{'name': 'John Travolta'}, {'name': 'Samuel L. Jackson'}]
         },
-        'keywords': {'keywords': [{'name': 'hitman'}]},
+        'keywords': {'keywords': [{'name': 'hitman'}, {'name': 'crime'}]},
         'tagline': 'Just because you are a character doesn\'t mean you have character.',
-        'production_companies': [{'name': 'Miramax'}],
+        'production_companies': [{'name': 'Miramax'}, {'name': 'A Band Apart'}],
         'budget': 8000000,
         'revenue': 213928762,
         'original_language': 'en',
-        'poster_path': '/d5iIlFn5sCMn4VYAStA6siNz30G1r.jpg',
+        'poster_path': '/d5iIlFn5sCMn4VYAStA6siNz30G1r.jpg'
     }
     
-    mock_response.json.side_effect = [search_json, details_json]
+    # Setup the mock to return same response for both API calls
+    mock_response.json.side_effect = [search_json, details_json] * 2  # Times 2 for both test cases
     mocker.patch('requests.get', return_value=mock_response)
     
-    # Execution
+    # Test 1: Exact title match
     details = core.fetch_movie_details_from_api("Pulp Fiction", 1994)
-
-    # Assertion
+    
+    # Assert no errors
     assert "Error" not in details
-    assert details['title'] == 'Pulp Fiction'
+    
+    # Assert original title is preserved
+    assert details['title'] == "Pulp Fiction"
+    
+    # Assert other fields are correctly parsed
     assert details['year'] == 1994
-    assert details['director'] == 'Tarantino'
+    assert details['director'] == "Tarantino"
+    assert details['genre'] == "Crime, Drama"
     assert details['tmdb_score'] == "84%"
+    assert details['writers'] == "Quentin Tarantino"
+    assert details['dop'] == "Andrzej Sekula"
+    assert details['cast'] == "John Travolta, Samuel L. Jackson"
+    assert details['keywords'] == "hitman, crime"
+    assert details['collection'] == "Pulp Fiction Collection"
+    assert details['production_companies'] == "Miramax, A Band Apart"
+    
+    # Test 2: Fuzzy matching with slightly different title
+    details = core.fetch_movie_details_from_api("Pulp Ficton", 1994)  # Intentional typo
+    assert "Error" not in details
+    assert details['title'] == "Pulp Ficton"  # Original title should be preserved
+    assert details['year'] == 1994  # Other details should still be correct
+    assert details['director'] == "Tarantino"
