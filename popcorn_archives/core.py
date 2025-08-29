@@ -7,6 +7,8 @@ from . import config as config_manager
 import zipfile
 from . import logger as app_logger
 from fuzzywuzzy import fuzz
+import click
+
 
 def parse_movie_title(name):
     """
@@ -46,25 +48,61 @@ def scan_movie_folders(path):
             
     return valid_movies, invalid_folders
 
-def read_csv_file(filepath):
-    """Reads a CSV file and returns a list of movies."""
-    movie_list = []
-    try:
-        with open(filepath, mode='r', encoding='utf-8') as csvfile:
-            reader = csv.reader(csvfile)
-            try:
-                next(reader)
-            except StopIteration:
-                return []
-
-            for row in reader:
-                if row:
-                    title, year = parse_movie_title(row[0])
-                    if title and year:
-                        movie_list.append((title, year))
-    except FileNotFoundError:
-        return None
-    return movie_list
+def read_csv_file(filepath, has_header=True):
+    """
+    Reads a CSV file with movie data.
+    
+    Args:
+        filepath: Path to the CSV file
+        has_header: Whether the CSV file has a header row (default: True)
+    
+    Returns:
+        tuple: (successful imports list, skipped movies list)
+    """
+    from . import database  # Import here to avoid circular imports
+    
+    movies = []
+    skipped = []
+    encodings = ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']
+    
+    for encoding in encodings:
+        try:
+            total_lines = sum(1 for _ in open(filepath, 'r', encoding=encoding))
+            with open(filepath, 'r', encoding=encoding) as f:
+                reader = csv.reader(f)
+                
+                # Skip header only if specified
+                if has_header:
+                    next(reader)
+                    total_lines -= 1
+                
+                with tqdm(total=total_lines, desc="Reading CSV") as pbar:
+                    for row in reader:
+                        if not row:  # Skip empty rows
+                            pbar.update(1)
+                            continue
+                        
+                        title_with_year = row[0].strip()
+                        title, year = parse_movie_title(title_with_year)
+                        
+                        if title and year:
+                            # Check if movie already exists using database function
+                            if database.get_movie_details(title, year):
+                                skipped.append((title, year))
+                            else:
+                                movies.append((title, year))
+                        pbar.update(1)
+            
+            return movies, skipped
+            
+        except UnicodeDecodeError:
+            continue
+        except Exception as e:
+            click.echo(f"Error reading CSV file: {e}", err=True)
+            return [], []
+    
+    click.echo("Error: Could not read the CSV file with any supported encoding.", err=True)
+    return [], []
 
 BASE_URL = "https://api.themoviedb.org/3"
 

@@ -203,33 +203,54 @@ def scan(path):
 @cli.command(name="import")
 @click.argument('filepath', type=click.Path(exists=True))
 @click.option('--letterboxd', is_flag=True, help="Import data from a Letterboxd ZIP export.")
-def import_data(filepath, letterboxd):
+@click.option('--no-header', is_flag=True, help="Specify if the CSV file doesn't have a header row")
+def import_data(filepath, letterboxd, no_header):
     """Imports movies from a standard CSV or a Letterboxd ZIP file."""
-    from . import core
-
+    from . import core, database
+    
     if not letterboxd:
-        # --- FINAL: Logic for standard CSV import ---
+        # Standard CSV import
         click.echo(f"Importing movies from standard CSV: {filepath}")
-        movies_to_add = core.read_csv_file(filepath)
-        if not movies_to_add:
-            click.echo("No valid movies found in the CSV file."); return
+        movies_to_add, skipped = core.read_csv_file(filepath, has_header=not no_header)
         
-        added_count, skipped_count = 0, 0
+        if not movies_to_add and not skipped:
+            click.echo("No valid movies found in the CSV file.")
+            return
+        
+        # Show preview of what will be imported
+        click.echo("\nFound movies:")
+        click.echo(f"  To add: {len(movies_to_add)}")
+        click.echo(f"  Already in database: {len(skipped)}")
+        
+        if not movies_to_add:
+            click.echo("\nAll movies already exist in the database.")
+            return
+        
+        # Add movies with progress bar
+        added_count = 0
         added_titles = []
-        for title, year in tqdm(movies_to_add, desc="Importing from CSV"):
-            if database.add_movie(title, year):
-                added_count += 1
-                added_titles.append(f"'{title} ({year})'")
-            else:
-                skipped_count += 1
+        
+        with tqdm(total=len(movies_to_add), desc="Adding movies") as pbar:
+            for title, year in movies_to_add:
+                if database.add_movie(title, year):
+                    added_count += 1
+                    added_titles.append(f"'{title} ({year})'")
+                pbar.update(1)
+        
+        # Show detailed results
+        if skipped:
+            click.echo("\nSkipped movies (already in database):")
+            for title, year in skipped:
+                click.echo(f"  • {title} ({year})")
         
         if added_titles:
             app_logger.log_info(f"Added {added_count} movies via CSV import: {', '.join(added_titles)}")
-
-        click.echo(f"\nImport complete. Added: {added_count}, Skipped (duplicates): {skipped_count}.")
+            click.echo(click.style(f"\nSuccessfully added {added_count} new movies!", fg="green"))
+        
+        click.echo(f"Import complete. Added: {added_count}, Skipped (duplicates): {len(skipped)}.")
         return
 
-    # --- FINAL: Logic for Letterboxd import ---
+    # Letterboxd import (rest of the code remains the same)
     click.echo("Processing Letterboxd export file...")
     to_update, to_add, error = core.process_letterboxd_zip(filepath)
     if error:

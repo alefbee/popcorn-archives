@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.4] - 2025-08-30
+
+### Added
+- **Import Progress Bars**: Added progress bars for both CSV reading and movie addition
+- **Detailed Import Preview**: Now shows a preview of movies to be imported before proceeding
+- **Better Feedback**: Added colored success messages and detailed skipped movie lists
+- **CSV Import Options**: Added `--no-header` flag to support CSV files without headers
+
+### Changed
+- **CSV Processing**: 
+  - Improved CSV file processing with proper encoding detection and progress tracking
+  - Made header row optional in CSV imports
+  - Added support for multiple character encodings (UTF-8, Latin-1, ISO-8859-1, CP1252)
+- **Import UI**: Enhanced the import command UI with better organization and clearer feedback
+- **Performance**: Optimized CSV reading by avoiding multiple file reads
+
+### Fixed
+- **Circular Imports**: Fixed potential circular import issues in core.py
+- **Progress Tracking**: Fixed progress bar accuracy for CSV files with/without headers
+- **Error Handling**: 
+  - Improved error messages for various CSV reading scenarios
+  - Better handling of non-UTF-8 encoded files
+  - Clearer feedback about skipped (duplicate) entries
+
 ## [4.0.3] - 2025-08-30
 
 ### Changed

@@ -55,11 +55,14 @@ def test_read_csv_file(tmp_path):
     csv_content = "name\nMovie One (2022)\nInvalid Movie\nMovie Two 2023"
     csv_file.write_text(csv_content)
 
-    result = core.read_csv_file(csv_file)
+    movies_to_add, skipped = core.read_csv_file(csv_file)
 
-    assert len(result) == 2
-    assert set(result) == {("Movie One", 2022), ("Movie Two", 2023)}
-
+    # Test successful imports
+    assert len(movies_to_add) == 2
+    assert set(map(tuple, movies_to_add)) == {("Movie One", 2022), ("Movie Two", 2023)}
+    
+    # Test skipped movies
+    assert len(skipped) == 0
 
 def test_fetch_movie_details_success(mocker):
     """Tests a successful API call with a complete mock data payload."""

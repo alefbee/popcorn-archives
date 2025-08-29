@@ -143,6 +143,10 @@ Adds movies in bulk. This command supports two modes:
     By default, it imports from a simple CSV file with a `name` header.
     -   **Example:** `poparch import movies_to_add.csv`
 
+-   **No Header CSV Import:**
+    Use the `--no-header` flag to import your CSV without header.
+    -   **Example:** `poparch import --no-header  no-h-movies_to_add.csv`
+
 -   **Letterboxd ZIP Import:**
     Use the `--letterboxd` flag to import your entire history from a Letterboxd data export ZIP file. This will import your movies, watched status, and personal ratings. The process is fully interactive.
     -   **Example:** `poparch import --letterboxd letterboxd-export.zip`
