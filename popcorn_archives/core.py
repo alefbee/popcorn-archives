@@ -163,40 +163,38 @@ def fetch_movie_details_from_api(title, year=None, ignore_year_in_search=False):
                   "N/A")
         
         # Step 5: Process other details
-        cast = ", ".join([p['name'] for p in details.get('credits', {})
-                         .get('cast', [])[:7]])
-        keywords = ", ".join([k['name'] for k in details.get('keywords', {})
-                            .get('keywords', [])])
-        tmdb_score = f"{int(details.get('vote_average', 0) * 10)}%"
-        collection_info = details.get('belongs_to_collection')
-        companies = ", ".join([c['name'] for c in details.get('production_companies', 
-                                                            [])[:3]])
-
-        # Keep original title if provided
-        final_year = int(details.get('release_date', '0-0-0')[:4])
-
-        app_logger.log_info(f"Successfully fetched details for '{title}' from API.")
+        # Process crew information with N/A fallbacks
+        crew = details.get('credits', {}).get('crew', [])
+        directors = [p['name'] for p in crew if p.get('job') == 'Director']
+        writers = sorted(list(set(p['name'] for p in crew if p.get('department') == 'Writing')))
+        dop = next((p['name'] for p in crew if p.get('job') == 'Director of Photography'), 'N/A')
+        
+        # Process other details with N/A fallbacks
+        cast = [p['name'] for p in details.get('credits', {}).get('cast', [])[:7]]
+        keywords = [k['name'] for k in details.get('keywords', {}).get('keywords', [])]
+        collection_info = details.get('belongs_to_collection', {})
+        companies = [c['name'] for c in details.get('production_companies', [])[:3]]
 
         return {
             "title": title,  # Keep original title
-            "year": final_year,
-            "genre": ", ".join([g['name'] for g in details.get('genres', [])]),
-            "director": ", ".join(directors) if directors else "N/A",
-            "plot": details.get('overview', 'N/A'),
-            "tmdb_score": tmdb_score,
-            "imdb_id": details.get('imdb_id'),
-            "runtime": details.get('runtime'),
-            "cast": cast,
-            "keywords": keywords,
-            "collection": collection_info['name'] if collection_info else None,
-            "tagline": details.get('tagline'),
-            "writers": writers,
+            "year": int(details.get('release_date', '0')[:4]) or year,
+            "genre": ", ".join([g['name'] for g in details.get('genres', [])]) or 'N/A',
+            "director": ", ".join(directors) or 'N/A',
+            "plot": details.get('overview') or 'N/A',
+            "tmdb_score": f"{int(details.get('vote_average', 0) * 10)}%" if details.get('vote_average') else 'N/A',
+            "imdb_id": details.get('imdb_id') or 'N/A',
+            "runtime": details.get('runtime') or 0,
+            "cast": ", ".join(cast) or 'N/A',
+            "keywords": ", ".join(keywords) or 'N/A',
+            "collection": collection_info.get('name') if collection_info else 'N/A',
+            "tagline": details.get('tagline') or 'N/A',
+            "writers": ", ".join(writers) or 'N/A',
             "dop": dop,
-            "original_language": details.get('original_language'),
-            "poster_path": details.get('poster_path'),
-            "budget": details.get('budget'),
-            "revenue": details.get('revenue'),
-            "production_companies": companies
+            "original_language": details.get('original_language') or 'N/A',
+            "poster_path": details.get('poster_path') or 'N/A',
+            "budget": details.get('budget') or 0,
+            "revenue": details.get('revenue') or 0,
+            "production_companies": ", ".join(companies) or 'N/A'
         }
     
     except requests.exceptions.Timeout:

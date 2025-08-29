@@ -296,16 +296,16 @@ def get_movies_by_genre(genre_query):
 
 def get_movies_missing_details():
     """
-    Returns all movies that are missing one or more key details.
-    This query is designed to find records from older versions.
+    Returns all movies that have NULL values (haven't been processed by API yet).
+    Ignores fields that have 'N/A' as they've already been checked with the API.
     """
     with get_db_connection() as conn:
         sql = """
             SELECT title, year FROM movies WHERE
                 runtime IS NULL OR
-                genre IS NULL OR genre = 'N/A' OR
-                director IS NULL OR director = 'N/A' OR
-                plot IS NULL OR plot = 'N/A' OR
+                genre IS NULL OR
+                director IS NULL OR
+                plot IS NULL OR
                 tagline IS NULL OR
                 writers IS NULL OR
                 dop IS NULL OR

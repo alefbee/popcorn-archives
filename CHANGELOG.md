@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.3] - 2025-08-30
+
+### Changed
+- **API Data Handling**: Modified how missing API data is handled. Now uses 'N/A' for unavailable text fields and 0 for unavailable numeric fields instead of leaving them NULL
+- **Update Process**: Improved the movie update process to only process movies that haven't been checked with the API yet (those with NULL values)
+
+### Fixed
+- **Repeated Updates**: Fixed issue where the update command would repeatedly try to fetch data for movies where the information wasn't available in TMDb
+- **Data Consistency**: Ensured consistent handling of unavailable data across all movie fields
+
+### Performance
+- Reduced unnecessary API calls by properly marking unavailable data
+- Improved update command efficiency by only processing truly unchecked movies
+
 ## [4.0.2] - 2025-08-30
 
 ### Changed
