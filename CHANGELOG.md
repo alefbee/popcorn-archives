@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.2] - 2025-08-30
+
+### Changed
+- **Performance Improvement**: Added `python-Levenshtein` as a required dependency for significantly faster fuzzy string matching used in movie title comparisons.
+
+### Fixed
+- Removed the UserWarning about slow pure-python SequenceMatcher by adding the C-based Levenshtein implementation.
+
+### Dependencies
+- Added `python-Levenshtein` to `install_requires` in `setup.py` for optimal fuzzy matching performance.
+
 ## [4.0.1] - 2025-08-30
 
 ### Fixed
