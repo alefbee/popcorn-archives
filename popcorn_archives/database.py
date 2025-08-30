@@ -230,69 +230,78 @@ def get_movie_details(title, year):
         )
         return cursor.fetchone()
 
-def update_movie_details(original_title, original_year, details):
+def update_movie_details(title, year, details):
     """
-    Updates a movie record with the full, rich dataset from the API while preserving
-    the original title.
+    Updates the details of a movie in the database.
     
     Args:
-        original_title (str): The original title of the movie as entered by user
-        original_year (int): The original year of the movie
-        details (dict): The movie details fetched from the API
+        title (str): Original title of the movie
+        year (int): Original year of the movie
+        details (dict): New details to update
     """
-    sql = """
-        UPDATE movies SET
-            title = ?, year = ?, genre = ?, director = ?, plot = ?,
-            tmdb_score = ?, imdb_id = ?, runtime = ?, "cast" = ?,
-            keywords = ?, collection = ?, user_rating = ?, tagline = ?,
-            writers = ?, dop = ?, original_language = ?, poster_path = ?,
-            budget = ?, revenue = ?, production_companies = ?
-        WHERE LOWER(title) = LOWER(?) AND year = ?
-    """
-    
-    with get_db_connection() as conn:
-        # Preserve existing user rating
-        current_data = conn.execute(
-            "SELECT user_rating FROM movies WHERE LOWER(title) = LOWER(?) AND year = ?",
-            (original_title, original_year)
-        ).fetchone()
-        user_rating = current_data['user_rating'] if current_data else None
+    if "Error" in details:
+        return False
+        
+    try:
+        with get_db_connection() as conn:
+            # First, verify the movie exists
+            cursor = conn.execute(
+                "SELECT title, year FROM movies WHERE title = ? AND year = ?",
+                (title, year)
+            )
+            if not cursor.fetchone():
+                app_logger.log_error(f"Cannot update non-existent movie: {title} ({year})")
+                return False
 
-        # Always use the original title instead of the one from API
-        conn.execute(sql, (
-            original_title,  # Always use original title
-            details.get('year', original_year),  # Fallback to original year if API year is missing
-            details.get('genre'),
-            details.get('director'),
-            details.get('plot'),
-            details.get('tmdb_score'),
-            details.get('imdb_id'),
-            details.get('runtime'),
-            details.get('cast'),
-            details.get('keywords'),
-            details.get('collection'),
-            user_rating,
-            details.get('tagline'),
-            details.get('writers'),
-            details.get('dop'),
-            details.get('original_language'),
-            details.get('poster_path'),
-            details.get('budget'),
-            details.get('revenue'),
-            details.get('production_companies'),
-            original_title,
-            original_year
-        ))
-        conn.commit()
-
-def get_movies_by_genre(genre_query):
-    """Finds all movies that match a specific genre."""
-    with get_db_connection() as conn:
-        cursor = conn.execute(
-            "SELECT title, year, genre FROM movies WHERE genre LIKE ?",
-            (f'%{genre_query}%',)
-        )
-        return cursor.fetchall()
+            sql = """
+                UPDATE movies SET
+                    runtime = ?,
+                    genre = ?,
+                    director = ?,
+                    plot = ?,
+                    tmdb_score = ?,
+                    imdb_id = ?,
+                    cast = ?,
+                    keywords = ?,
+                    collection = ?,
+                    tagline = ?,
+                    writers = ?,
+                    dop = ?,
+                    original_language = ?,
+                    poster_path = ?,
+                    budget = ?,
+                    revenue = ?,
+                    production_companies = ?
+                WHERE title = ? AND year = ?
+            """
+            
+            conn.execute(sql, (
+                details.get('runtime', None),
+                details.get('genre', None),
+                details.get('director', None),
+                details.get('plot', None),
+                details.get('tmdb_score', None),
+                details.get('imdb_id', None),
+                details.get('cast', None),
+                details.get('keywords', None),
+                details.get('collection', None),
+                details.get('tagline', None),
+                details.get('writers', None),
+                details.get('dop', None),
+                details.get('original_language', None),
+                details.get('poster_path', None),
+                details.get('budget', 0),
+                details.get('revenue', 0),
+                details.get('production_companies', None),
+                title,  # WHERE clause
+                year    # WHERE clause
+            ))
+            
+            return True
+            
+    except Exception as e:
+        app_logger.log_error(f"Database error updating {title} ({year}): {str(e)}")
+        return False
 
 def get_movies_missing_details():
     """

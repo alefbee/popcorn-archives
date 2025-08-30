@@ -760,7 +760,10 @@ def smart_info(query):
 def update(filepath, force, cleanup):
     """Fetches details for movies and provides maintenance options."""
     from . import core, database
+    import time
+    from tqdm import tqdm
 
+    # --- Cleanup Phase ---
     if cleanup:
         click.echo("Scanning database for movies with similar titles...")
         merged_count = database.cleanup_database()
@@ -769,77 +772,100 @@ def update(filepath, force, cleanup):
         else:
             click.echo("No similar title duplicates found.")
         
-        # If ONLY cleanup was requested, stop here.
+        # If ONLY cleanup was requested, stop here
         if not any([filepath, force]):
             click.echo("Cleanup complete.")
             return
         click.echo("Cleanup finished. Continuing with other operations...\n")
 
+    # --- API Key Check ---
     if not config_manager.get_api_key():
         click.echo(click.style("Error: API key not configured.", fg='red'))
         return
 
+    # --- Movie Selection Phase ---
     movies_to_update = []
 
-    if filepath:
-        click.echo(f"Updating movies from list: {filepath}...")
-        try:
+    try:
+        if filepath:
+            click.echo(f"Updating movies from list: {filepath}...")
             with open(filepath, 'r', encoding='utf-8') as f:
                 movie_name_list = [line.strip() for line in f if line.strip()]
             movies_to_update = database.get_movies_by_name_list(movie_name_list)
-        except Exception as e:
-            click.echo(click.style(f"Error reading file: {e}", fg='red')); return
             
-    elif force:
-        movies_to_update = database.get_all_movies()
-        click.echo("Fetching details for all movies (force update)...")
-    
-    else: # Default case
-        movies_to_update = database.get_movies_missing_details()
-        click.echo("Searching for movies with missing details to update...")
+        elif force:
+            movies_to_update = database.get_all_movies()
+            click.echo("Fetching details for all movies (force update)...")
+        
+        else:  # Default case
+            movies_to_update = database.get_movies_missing_details()
+            click.echo("Searching for movies with missing details to update...")
+
+    except Exception as e:
+        click.echo(click.style(f"Error during movie selection: {e}", fg='red'))
+        return
 
     if not movies_to_update:
         click.echo(click.style("No movies need updating for the selected mode.", fg='green'))
         return
 
-    # --- TQDM Loop and Final Report (this part was already correct) ---
+    # --- Update Process ---
     updated_count = 0
     failed_movies = []
+    start_time = time.time()
+
     try:
         with tqdm(movies_to_update, desc="Updating movies") as pbar:
             for movie in pbar:
                 title, year = movie['title'], movie['year']
-                pbar.set_description(f"Fetching: {title[:30]}")
+                truncated_title = title[:30] + ('...' if len(title) > 30 else '')
+                pbar.set_description(f"Fetching: {truncated_title}")
+
+                # Fetch and update movie details
                 details = core.fetch_movie_details_from_api(title, year)
                 if not details.get("Error"):
-                    database.update_movie_details(title, year, details)
-                    updated_count += 1
+                    if database.update_movie_details(title, year, details):
+                        updated_count += 1
+                    else:
+                        failed_movies.append((f"{title} ({year})", "Database update failed"))
                 else:
                     failed_movies.append((f"{title} ({year})", details['Error']))
-                pbar.update(1)
+
+                # Rate limiting
                 time.sleep(0.1)
+
     except KeyboardInterrupt:
         click.echo(click.style("\n\nOperation aborted by user.", fg='yellow'))
+
     finally:
-        total_processed = pbar.n if 'pbar' in locals() else 0
-        click.echo(click.style(f"\n--- Update Summary ---", bold=True))
-        click.echo(click.style(f"  Processed:    {total_processed}/{len(movies_to_update)}", fg='cyan'))
+        # --- Summary Report ---
+        total_processed = len(movies_to_update)
+        elapsed_time = time.time() - start_time
+        
+        click.echo(click.style("\n--- Update Summary ---", bold=True))
+        click.echo(click.style(f"  Processed:    {total_processed}/{total_processed}", fg='cyan'))
         click.echo(click.style(f"  Successfully updated: {updated_count}", fg='green'))
+        click.echo(f"  Time taken: {elapsed_time:.1f} seconds")
+
         if failed_movies:
             failed_count = len(failed_movies)
             click.echo(click.style(f"  Failed to update:   {failed_count}", fg='red'))
             click.echo(click.style("\nFailed items (please check title/year or network connection):", bold=True))
+            
             for movie_name, error_reason in failed_movies:
-                if "not found" in error_reason:
-                    error_display = "Not found on TMDb"
-                elif "timed out" in error_reason:
-                    error_display = "Network timeout"
-                else:
-                    error_display = "API Error"
+                error_display = "Not found on TMDb" if "not found" in error_reason.lower() else \
+                              "Network timeout" if "timed out" in error_reason.lower() else \
+                              "API Error"
                 
                 click.echo(f"  - {movie_name:<40} | Reason: {error_display}")
-                # --- NEW: Detailed Logging ---
-        app_logger.log_info(f"Update Summary: Processed {total_processed}/{len(movies_to_update)}. Success: {updated_count}, Failed: {len(failed_movies)}.")
+
+        # --- Logging ---
+        app_logger.log_info(
+            f"Update Summary: Processed {total_processed}/{total_processed}. "
+            f"Success: {updated_count}, Failed: {len(failed_movies)}. "
+            f"Time: {elapsed_time:.1f}s"
+        )
+        
         if failed_movies:
             failed_titles = [f[0] for f in failed_movies]
             app_logger.log_error(f"Failed to update movies: {', '.join(failed_titles)}")

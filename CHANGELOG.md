@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.5] - 2025-08-30
+
+### Added
+- **Performance Metrics**: Added execution time tracking for update operations
+- **Enhanced Logging**: Added more detailed logging including timing information
+- **Progress Display**: Added truncation for long movie titles in progress bar
+- **Verification**: Added pre-update verification steps for data integrity
+
+### Changed
+- **Update Logic**: 
+  - Modified update process to properly handle existing records
+  - Reorganized update command into distinct phases
+  - Enhanced progress reporting with better formatting
+- **Error Handling**: 
+  - Improved error categorization and display
+  - Added more detailed error messages for failed updates
+  - Standardized error message format
+- **Database Operations**: 
+  - Added verification for successful database updates
+  - Improved handling of database constraints
+  - Better management of duplicate records
+
+### Fixed
+- **Database Updates**: Fixed UNIQUE constraint violation during movie updates
+- **Progress Tracking**: 
+  - Fixed progress bar accuracy
+  - Improved running summary during updates
+- **Data Integrity**: 
+  - Added verification step before updating movie details
+  - Better handling of existing records
+- **Error Messages**: Enhanced clarity of update status messages
+
 ## [4.0.4] - 2025-08-30
 
 ### Added
