@@ -4,8 +4,6 @@
 [![GitHub License](https://img.shields.io/github/license/alefbee/popcorn-archives)](https://github.com/alefbee/popcorn-archives/blob/main/LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-> **Note:** As of version 2.0.0, the command has been renamed from `popcorn-archives` to `poparch`!
-
 A simple and powerful command-line tool to manage your personal movie watchlist, built with Python and Click.
 
 ## Why Popcorn Archives?
@@ -38,8 +36,6 @@ Take a tour of a typical user session in this single demonstration. The animatio
 
 5.  **Viewing the Final Result (`info`):**
     Finally, `poparch info "The Matrix 1999"` is used to view the complete details for that movie. The output now shows the fully enriched data from the API, as well as the user's personal rating and watched status, all in one clean card.
-
-> **Tech Note:** The animation above is a high-quality **APNG** (Animated PNG), not a GIF. This modern format is supported by GitHub and allows for perfect color reproduction and better compression.
 
 ## Features
 
