@@ -2,6 +2,7 @@ import os
 import csv
 import re
 import requests
+import pandas as pd
 from tqdm import tqdm
 from . import config as config_manager
 import zipfile
@@ -50,59 +51,64 @@ def scan_movie_folders(path):
 
 def read_csv_file(filepath, has_header=True):
     """
-    Reads a CSV file with movie data.
-    
-    Args:
-        filepath: Path to the CSV file
-        has_header: Whether the CSV file has a header row (default: True)
-    
-    Returns:
-        tuple: (successful imports list, skipped movies list)
+    Reads a CSV file and returns a list of movie tuples (title, year).
+    This function now correctly handles CSV parsing and is consistent
+    with read_excel_file.
     """
-    from . import database  # Import here to avoid circular imports
-    
-    movies = []
-    skipped = []
-    encodings = ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']
-    
-    for encoding in encodings:
-        try:
-            total_lines = sum(1 for _ in open(filepath, 'r', encoding=encoding))
-            with open(filepath, 'r', encoding=encoding) as f:
-                reader = csv.reader(f)
-                
-                # Skip header only if specified
-                if has_header:
-                    next(reader)
-                    total_lines -= 1
-                
-                with tqdm(total=total_lines, desc="Reading CSV") as pbar:
-                    for row in reader:
-                        if not row:  # Skip empty rows
-                            pbar.update(1)
-                            continue
-                        
-                        title_with_year = row[0].strip()
-                        title, year = parse_movie_title(title_with_year)
-                        
-                        if title and year:
-                            # Check if movie already exists using database function
-                            if database.get_movie_details(title, year):
-                                skipped.append((title, year))
-                            else:
-                                movies.append((title, year))
-                        pbar.update(1)
-            
-            return movies, skipped
-            
-        except UnicodeDecodeError:
-            continue
-        except Exception as e:
-            click.echo(f"Error reading CSV file: {e}", err=True)
-            return [], []
-    
-    click.echo("Error: Could not read the CSV file with any supported encoding.", err=True)
-    return [], []
+    movie_list = []
+    try:
+        with open(filepath, mode='r', encoding='utf-8') as csvfile:
+            reader = csv.reader(csvfile)
+            if has_header:
+                try:
+                    next(reader)  # Skip the header row
+                except StopIteration:
+                    return [] # File is empty or only has a header
+
+            for row in reader:
+                # We only care about the first column, even if there are more.
+                if row and row[0].strip():
+                    # Use the robust parse_movie_title to extract data
+                    title, year = parse_movie_title(row[0])
+                    if title and year:
+                        movie_list.append((title, year))
+    except FileNotFoundError:
+        return None
+    except Exception as e:
+        click.echo(click.style(f"Error processing CSV file: {e}", fg='red'))
+        return []
+    return movie_list
+
+def read_excel_file(filepath):
+    """
+    Reads an Excel file (.xlsx, .xls) and returns a list of movies.
+    It assumes the movie names are in the first column.
+    """
+    try:
+        # Read the Excel file into a pandas DataFrame.
+        # We only read the first column (index 0).
+        df = pd.read_excel(filepath, usecols=[0], header=0)
+        
+        if df.empty:
+            return []
+
+        movie_list = []
+        # The column name will be the header of the first column.
+        # We iterate over each row in that column.
+        for movie_name in df[df.columns[0]]:
+            if isinstance(movie_name, str) and movie_name.strip():
+                # Use the existing parse_movie_title to extract title and year
+                title, year = parse_movie_title(movie_name)
+                if title and year:
+                    movie_list.append((title, year))
+        
+        return movie_list
+    except FileNotFoundError:
+        return None # Should be caught by click's Path type, but good practice
+    except Exception as e:
+        # Handle other potential pandas errors, like a corrupted file
+        click.echo(click.style(f"Error processing Excel file: {e}", fg='red'))
+        return []
 
 BASE_URL = "https://api.themoviedb.org/3"
 

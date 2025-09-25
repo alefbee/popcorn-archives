@@ -40,7 +40,7 @@ Take a tour of a typical user session in this single demonstration. The animatio
 ## Features
 
 ### 🗂️ Collection Management
--   **Flexible Importing**: Seamlessly build your collection by **scanning** directories of movie folders, **importing** from standard CSV files, or migrating your entire history from a **Letterboxd** ZIP export.
+-   **Flexible Importing**: Seamlessly build your collection by **scanning** directories of movie folders, **importing** from standard CSV files, Excel files or migrating your entire history from a **Letterboxd** ZIP export.
 -   **Personal Ratings & Watched Status**: Keep track of what you've seen with `watch`/`unwatch` and rate movies on a 1-10 scale with the `rate` command. Your Letterboxd ratings are imported automatically!
 -   **Keep Your Archive Rich**: Use the `update` command to fetch rich metadata for your entire collection at once. The process is robust and provides a detailed summary of successes and failures.
 
@@ -62,7 +62,7 @@ Take a tour of a typical user session in this single demonstration. The animatio
 If you just want to use the application, the best way is to install it with `pipx`. This installs the tool in an isolated environment but makes the command available everywhere in your system.
 
 **1. Install `pipx`**
-If you don't have it, install `pipx` using your system's package manager (e.g., `sudo apt install pipx`, `brew install pipx`). Then, ensure its path is configured:
+If you don't have it, install `pipx` using your system's package manager (e.g., `sudo apt install pipx`, `brew install pipx` or `scoop install pipx` on Windows). Then, ensure its path is configured:
 ```bash
 pipx ensurepath
 ```
@@ -73,7 +73,7 @@ Clone the repository and install directly from the local path:
 ```bash
 git clone https://github.com/alefbee/popcorn-archives.git
 cd popcorn-archives
-pipx install .```
+pipx install .
 The `poparch` command is now ready to use!
 
 ### Option 2: For Development
@@ -136,7 +136,7 @@ Here is a summary of the available commands:
 | **Management** | | |
 | `add` | Adds a new movie to the archive. | `poparch add "The Kid 1921"` |
 | `scan` | Scans a directory for movie folders. | `poparch scan /path/to/movies` |
-| `import`| Imports from a CSV or Letterboxd ZIP. | `poparch import --letterboxd file.zip` |
+| `import`| Imports from a CSV or Excel or Letterboxd ZIP. | `poparch import --letterboxd file.zip` |
 | `export`| Exports the archive to a CSV. | `poparch export backup.csv` |
 | `rate` | Rates a movie on a 1-10 scale. | `poparch rate "The Matrix" 10` |
 | `watch` | Marks a movie as watched. | `poparch watch "The Matrix"` |

@@ -201,100 +201,97 @@ def scan(path):
         click.echo(click.style(f"  {skipped_count} movies were already in the archive.", fg='yellow'))
 
 @cli.command(name="import")
-@click.argument('filepath', type=click.Path(exists=True))
+@click.argument('filepath', type=click.Path(exists=True, dir_okay=False))
 @click.option('--letterboxd', is_flag=True, help="Import data from a Letterboxd ZIP export.")
-@click.option('--no-header', is_flag=True, help="Specify if the CSV file doesn't have a header row")
-def import_data(filepath, letterboxd, no_header):
-    """Imports movies from a standard CSV or a Letterboxd ZIP file."""
+def import_data(filepath, letterboxd):
+    """Imports movies from a standard CSV, Excel, or a Letterboxd ZIP file."""
+
     from . import core, database
-    
-    if not letterboxd:
-        # Standard CSV import
-        click.echo(f"Importing movies from standard CSV: {filepath}")
-        movies_to_add, skipped = core.read_csv_file(filepath, has_header=not no_header)
+
+    # --- Mode 1: Letterboxd Import ---
+    if letterboxd:
+        click.echo("Processing Letterboxd export file...")
+        to_update, to_add, error = core.process_letterboxd_zip(filepath)
+        if error:
+            click.echo(click.style(error["Error"], fg='red')); return
+
+        click.echo(f"Found {len(to_update)} movies to update and {len(to_add)} new movies.")
+        if not to_update and not to_add:
+            click.echo("Nothing to import."); return
+
+        movies_to_process = []
+        if to_add:
+            questions = [inquirer.List('choice', message="What to do with new movies?", choices=['Add all new movies', 'Only update existing movies', 'Abort'])]
+            answer = inquirer.prompt(questions)
+            
+            if not answer or answer['choice'] == 'Abort':
+                click.echo("Import aborted."); return
+            
+            if answer['choice'] == 'Add all new movies':
+                movies_to_process.extend(to_add)
+            else:
+                skipped_list = [f"{m['title']} ({m['year']})" for m in to_add]
+                click.echo(click.style("\nThe following movies will be skipped:", bold=True))
+                click.echo(", ".join(skipped_list))
         
-        if not movies_to_add and not skipped:
-            click.echo("No valid movies found in the CSV file.")
-            return
-        
-        # Show preview of what will be imported
-        click.echo("\nFound movies:")
-        click.echo(f"  To add: {len(movies_to_add)}")
-        click.echo(f"  Already in database: {len(skipped)}")
-        
-        if not movies_to_add:
-            click.echo("\nAll movies already exist in the database.")
-            return
-        
-        # Add movies with progress bar
-        added_count = 0
-        added_titles = []
-        
-        with tqdm(total=len(movies_to_add), desc="Adding movies") as pbar:
-            for title, year in movies_to_add:
-                if database.add_movie(title, year):
-                    added_count += 1
-                    added_titles.append(f"'{title} ({year})'")
-                pbar.update(1)
-        
-        # Show detailed results
-        if skipped:
-            click.echo("\nSkipped movies (already in database):")
-            for title, year in skipped:
-                click.echo(f"  • {title} ({year})")
-        
-        if added_titles:
-            app_logger.log_info(f"Added {added_count} movies via CSV import: {', '.join(added_titles)}")
-            click.echo(click.style(f"\nSuccessfully added {added_count} new movies!", fg="green"))
-        
-        click.echo(f"Import complete. Added: {added_count}, Skipped (duplicates): {len(skipped)}.")
+        movies_to_process.extend(to_update)
+        if not movies_to_process:
+            click.echo("No movies selected for processing. Exiting."); return
+
+        updated_log, added_log = [], []
+        for movie in tqdm(movies_to_process, desc="Importing from Letterboxd"):
+            is_new = not database.get_movie_details(movie['title'], movie['year'])
+            if is_new:
+                database.add_movie(movie['title'], movie['year'])
+                added_log.append(f"'{movie['title']} ({movie['year']})'")
+            else:
+                updated_log.append(f"'{movie['title']} ({movie['year']})'")
+            
+            database.set_movie_watched_status(movie['title'], movie['year'], watched_status=True)
+            if movie.get('rating'):
+                database.set_user_rating(movie['title'], movie['year'], movie['rating'])
+
+        if updated_log: app_logger.log_info(f"Updated {len(updated_log)} movies from Letterboxd: {', '.join(updated_log)}")
+        if added_log: app_logger.log_info(f"Added {len(added_log)} new movies from Letterboxd: {', '.join(added_log)}")
+        click.echo(click.style("\nLetterboxd import complete!", fg='green'))
         return
 
-    # Letterboxd import (rest of the code remains the same)
-    click.echo("Processing Letterboxd export file...")
-    to_update, to_add, error = core.process_letterboxd_zip(filepath)
-    if error:
-        click.echo(click.style(error["Error"], fg='red')); return
-
-    click.echo(f"Found {len(to_update)} movies to update and {len(to_add)} new movies.")
-    if not to_update and not to_add:
-        click.echo("Nothing to import."); return
-
-    movies_to_process = []
-    if to_add:
-        questions = [inquirer.List('choice', message="What to do with new movies?", choices=['Add all new movies', 'Only update existing movies', 'Abort'])]
-        answer = inquirer.prompt(questions)
-        
-        if not answer or answer['choice'] == 'Abort':
-            click.echo("Import aborted."); return
-        
-        if answer['choice'] == 'Add all new movies':
-            movies_to_process.extend(to_add)
-        else:
-            skipped_list = [f"{m['title']} ({m['year']})" for m in to_add]
-            click.echo(click.style("\nThe following movies will be skipped:", bold=True))
-            click.echo(", ".join(skipped_list))
+    # --- Mode 2: Standard File Import (CSV or Excel) ---
+    click.echo(f"Processing file: {filepath}")
+    file_extension = os.path.splitext(filepath)[1].lower()
     
-    movies_to_process.extend(to_update)
-    if not movies_to_process:
-        click.echo("No movies selected for processing. Exiting."); return
+    movies_to_add = []
+    if file_extension == '.csv':
+        click.echo("Detected CSV file.")
+        movies_to_add = core.read_csv_file(filepath)
+    elif file_extension in ['.xlsx', '.xls']:
+        click.echo("Detected Excel file. Reading...")
+        movies_to_add = core.read_excel_file(filepath)
+    else:
+        click.echo(click.style(f"Error: Unsupported file format '{file_extension}'.", fg='red'))
+        return
 
-    updated_log, added_log = [], []
-    for movie in tqdm(movies_to_process, desc="Importing from Letterboxd"):
-        is_new = not database.get_movie_details(movie['title'], movie['year'])
-        if is_new:
-            database.add_movie(movie['title'], movie['year'])
-            added_log.append(f"'{movie['title']} ({movie['year']})'")
+    if not movies_to_add:
+        click.echo("No valid movies found in the file to import."); return
+
+    added_count, skipped_count = 0, 0
+    added_titles = []
+    
+    for title, year in tqdm(movies_to_add, desc="Importing movies"):
+        if database.add_movie(title, year):
+            added_count += 1
+            added_titles.append(f"'{title} ({year})'")
         else:
-            updated_log.append(f"'{movie['title']} ({movie['year']})'")
-        
-        database.set_movie_watched_status(movie['title'], movie['year'], watched_status=True)
-        if movie.get('rating'):
-            database.set_user_rating(movie['title'], movie['year'], movie['rating'])
+            skipped_count += 1
+    
+    if added_titles:
+        log_message = f"Added {added_count} movies via {file_extension.upper()[1:]} import: {', '.join(added_titles)}"
+        app_logger.log_info(log_message)
 
-    if updated_log: app_logger.log_info(f"Updated {len(updated_log)} movies from Letterboxd: {', '.join(updated_log)}")
-    if added_log: app_logger.log_info(f"Added {len(added_log)} new movies from Letterboxd: {', '.join(added_log)}")
-    click.echo(click.style("\nLetterboxd import complete!", fg='green'))
+    click.echo(f"\nImport complete.")
+    click.echo(click.style(f"  Added: {added_count} new movies.", fg='green'))
+    if skipped_count > 0:
+        click.echo(click.style(f"  Skipped (duplicates): {skipped_count}", fg='yellow'))
 
 @cli.command()
 @click.argument('query', required=False)

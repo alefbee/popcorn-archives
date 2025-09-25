@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import MagicMock
 from popcorn_archives import core
+import pandas as pd
 from thefuzz import fuzz
 
 
@@ -48,21 +49,6 @@ def test_scan_movie_folders(tmp_path):
     assert set(valid) == {("Good Movie", 2020), ("Another Good Movie", 2021)}
     assert invalid == ["Bad Movie Folder"]
 
-
-def test_read_csv_file(tmp_path):
-    """Tests reading a CSV file from a temporary file system."""
-    csv_file = tmp_path / "test.csv"
-    csv_content = "name\nMovie One (2022)\nInvalid Movie\nMovie Two 2023"
-    csv_file.write_text(csv_content)
-
-    movies_to_add, skipped = core.read_csv_file(csv_file)
-
-    # Test successful imports
-    assert len(movies_to_add) == 2
-    assert set(map(tuple, movies_to_add)) == {("Movie One", 2022), ("Movie Two", 2023)}
-    
-    # Test skipped movies
-    assert len(skipped) == 0
 
 def test_fetch_movie_details_success(mocker):
     """Tests a successful API call with a complete mock data payload."""
@@ -148,3 +134,57 @@ def test_fetch_movie_details_success(mocker):
     assert details['title'] == "Pulp Ficton"  # Original title should be preserved
     assert details['year'] == 1994  # Other details should still be correct
     assert details['director'] == "Tarantino"
+
+def test_read_csv_file_with_header(tmp_path):
+    """Tests reading a standard CSV file that has a header row."""
+    # Setup: Create a temporary CSV file with a header
+    csv_file = tmp_path / "movies_with_header.csv"
+    csv_content = "name\nMovie One (2022)\nInvalid Movie\nMovie Two 2023"
+    csv_file.write_text(csv_content, encoding='utf-8')
+
+    # Execution: Call the function, specifying it has a header (the default)
+    result = core.read_csv_file(csv_file, has_header=True)
+
+    # Assertion
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert set(result) == {("Movie One", 2022), ("Movie Two", 2023)}
+
+def test_read_csv_file_no_header(tmp_path):
+    """Tests reading a CSV file that does not have a header row."""
+    # Setup: Create a temporary CSV file without a header
+    csv_file = tmp_path / "movies_no_header.csv"
+    csv_content = "Movie One (2022)\nMovie Two 2023"
+    csv_file.write_text(csv_content, encoding='utf-8')
+
+    # Execution: Call the function and tell it there's no header
+    result = core.read_csv_file(csv_file, has_header=False)
+
+    # Assertion
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert set(result) == {("Movie One", 2022), ("Movie Two", 2023)}
+
+def test_read_excel_file(tmp_path):
+    """Tests reading an Excel file using a temporary .xlsx file."""
+    # Setup: Create a temporary Excel file using pandas
+    excel_file = tmp_path / "movies.xlsx"
+    # Create some data in a pandas DataFrame
+    data = {
+        "Movie Title Column": [ # The column header can be anything
+            "Excel Movie 1 (2024)",
+            "Another Excel Movie 2025",
+            "Invalid Excel Entry"
+        ]
+    }
+    df = pd.DataFrame(data)
+    # Write the DataFrame to an Excel file
+    df.to_excel(excel_file, index=False, engine='openpyxl')
+
+    # Execution
+    result = core.read_excel_file(excel_file)
+
+    # Assertion
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert set(result) == {("Excel Movie 1", 2024), ("Another Excel Movie", 2025)}

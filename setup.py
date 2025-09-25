@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='popcorn-archives',
-    version='4.0.5',
+    version='4.1.0',
     packages=find_packages(),
     license="GPL-3.0-or-later",
     include_package_data=True,
@@ -14,6 +14,8 @@ setup(
         'thefuzz',
         'fuzzywuzzy',
         'python-Levenshtein',
+        'pandas',
+        'openpyxl',
     ],
     entry_points={
         'console_scripts': [
