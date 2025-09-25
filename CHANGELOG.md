@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.1] - 2025-09-25
+
+- **Improved Letterboxd Import Matching**: The Letterboxd import feature is now smarter at matching movies. It normalizes titles by removing special characters (like `:`) before comparison. This allows it to correctly identify and update existing movies that were added via `scan` from folder names with platform-specific character limitations (e.g., matching "X-Men First Class" with "X-Men: First Class").
+
 ## [4.1.0] - 2025-09-25
 
 ### Added

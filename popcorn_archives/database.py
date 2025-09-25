@@ -573,3 +573,24 @@ def cleanup_database(threshold=85):
         if total_merged > 0:
             conn.commit()
         return total_merged
+
+def find_movie_by_normalized_title(normalized_title, year):
+    """
+    Finds a movie in the database by comparing its normalized title and year.
+    This is used to match titles that might have platform-specific differences
+    (e.g., with or without a colon ':').
+    """
+    from . import core # Lazy import to use the normalizer
+    
+    with get_db_connection() as conn:
+        # We cannot use a simple SQL query here because normalization happens in Python.
+        # We must fetch all potential candidates and check them one by one.
+        # This is less efficient, but necessary for this kind of fuzzy matching.
+        cursor = conn.execute("SELECT * FROM movies WHERE year = ?", (year,))
+        
+        for movie_row in cursor.fetchall():
+            db_title_normalized = core.normalize_title(movie_row['title'])
+            if db_title_normalized == normalized_title:
+                return movie_row # Return the full row object if a match is found
+    
+    return None # No match found

@@ -240,16 +240,20 @@ def import_data(filepath, letterboxd):
 
         updated_log, added_log = [], []
         for movie in tqdm(movies_to_process, desc="Importing from Letterboxd"):
-            is_new = not database.get_movie_details(movie['title'], movie['year'])
+            # Use the original title for updating if it exists ---
+            title_to_update = movie.get('original_title', movie['title'])
+            
+            # Check if the movie is new, even if it's in the update list (edge case)
+            is_new = not database.get_movie_details(title_to_update, movie['year'])
             if is_new:
-                database.add_movie(movie['title'], movie['year'])
+                database.add_movie(movie['title'], movie['year']) # Add with the official Letterboxd title
                 added_log.append(f"'{movie['title']} ({movie['year']})'")
             else:
-                updated_log.append(f"'{movie['title']} ({movie['year']})'")
+                updated_log.append(f"'{title_to_update} ({movie['year']})'")
             
-            database.set_movie_watched_status(movie['title'], movie['year'], watched_status=True)
+            database.set_movie_watched_status(title_to_update, movie['year'], watched_status=True)
             if movie.get('rating'):
-                database.set_user_rating(movie['title'], movie['year'], movie['rating'])
+                database.set_user_rating(title_to_update, movie['year'], movie['rating'])
 
         if updated_log: app_logger.log_info(f"Updated {len(updated_log)} movies from Letterboxd: {', '.join(updated_log)}")
         if added_log: app_logger.log_info(f"Added {len(added_log)} new movies from Letterboxd: {', '.join(added_log)}")
