@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='popcorn-archives',
-    version='4.1.1',
+    version='4.2.0',
     packages=find_packages(),
     license="GPL-3.0-or-later",
     include_package_data=True,
@@ -16,6 +16,7 @@ setup(
         'python-Levenshtein',
         'pandas',
         'openpyxl',
+        'click-completion',
     ],
     entry_points={
         'console_scripts': [

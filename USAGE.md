@@ -9,6 +9,9 @@ Welcome to the comprehensive user guide for Popcorn Archives (`poparch`). This d
 4.  [Managing Your Archive](#managing-your-archive)
 5.  [Maintenance & Bulk Operations (Scan, Import, Export)](#maintenance--bulk-operations)
 6.  [Tracking Watched Status](#tracking-watched-status)
+7.  [Managing Your Watchlist](#managing-your-watchlist)  
+8.  [Logging](#logging)
+9.  [Power User Features](#power-user-features)
 
 ---
 
@@ -195,6 +198,29 @@ Suggests a random movie from your archive.
 -   Use the `--unwatched` flag to get a suggestion for a movie you haven't seen yet.
 -   **Example:** `poparch random --unwatched`
 
+## Managing Your Watchlist
+
+The `watchlist` command group helps you manage a simple, separate list of movies you intend to watch or download, without cluttering your main archive.
+
+### `watchlist`
+When run with no options, it displays all titles currently on your watchlist.
+```bash
+poparch watchlist
+```
+
+### `watchlist --add <"Title">`
+Adds a new title to your watchlist. The title can be anything you want.
+```bash
+poparch watchlist --add "The new movie everyone is talking about"
+poparch watchlist --add "Dune Part Two"
+```
+
+### `watchlist --delete <"Title">`
+Removes a title from your watchlist. The match is case-insensitive.
+```bash
+poparch watchlist --delete "dune part two"
+```
+
 ## Logging
 
 `poparch` can keep a detailed log of all major operations. Logging is **disabled by default**.
@@ -219,3 +245,28 @@ You must enable logging via the `config` command to start recording events.
     ```bash
     poparch config --logging on
     ```
+
+## Power User Features
+
+### Shell Completion
+`poparch` supports shell completion for commands and options, which makes using it much faster. To enable it, you need to add a line to your shell's configuration file. This only needs to be done once.
+
+**For Bash:**
+Add the following line to your `~/.bashrc` file:
+```bash
+eval "$(_POPARCH_COMPLETE=bash_source poparch)"
+```
+
+**For Zsh:**
+Add the following line to your `~/.zshrc` file:
+```bash
+eval "$(_POPARCH_COMPLETE=zsh_source poparch)"
+```
+
+**For Fish:**
+Run the following command once in your terminal:
+```fish
+_POPARCH_COMPLETE=fish_source poparch > ~/.config/fish/completions/poparch.fish
+```
+
+After updating your config file, restart your shell for the changes to take effect. You can now type `poparch w` and press `<TAB>` to see it auto-complete to `poparch watch`.

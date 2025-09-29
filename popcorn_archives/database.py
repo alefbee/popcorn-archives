@@ -67,6 +67,12 @@ def init_db():
                 click.echo(f"Database migration: Adding column '{col_name}'...")
                 conn.execute(f'ALTER TABLE movies ADD COLUMN {col_name} {col_type}')
         
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS watchlist (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL UNIQUE
+            )
+        ''')
         conn.commit()
 
 def add_movie(title, year):
@@ -594,3 +600,38 @@ def find_movie_by_normalized_title(normalized_title, year):
                 return movie_row # Return the full row object if a match is found
     
     return None # No match found
+
+#Functions for Watchlist Management
+def get_watchlist():
+    """Returns all titles from the watchlist, sorted alphabetically."""
+    with get_db_connection() as conn:
+        cursor = conn.execute("SELECT title FROM watchlist ORDER BY title ASC")
+        # Return a simple list of strings
+        return [row['title'] for row in cursor.fetchall()]
+
+def add_to_watchlist(title):
+    """
+    Adds a new movie title to the watchlist.
+    Returns True if successful, False if it already exists.
+    """
+    sql = "INSERT INTO watchlist (title) VALUES (?)"
+    try:
+        with get_db_connection() as conn:
+            # Standardize to Title Case before saving for consistency
+            conn.execute(sql, (title.strip().title(),))
+            conn.commit()
+            return True
+    except sqlite3.IntegrityError:
+        # This happens if the title already exists due to the UNIQUE constraint
+        return False
+
+def remove_from_watchlist(title):
+    """
+    Removes a movie title from the watchlist (case-insensitive).
+    Returns True if a movie was deleted, False otherwise.
+    """
+    sql = "DELETE FROM watchlist WHERE LOWER(title) = LOWER(?)"
+    with get_db_connection() as conn:
+        cursor = conn.execute(sql, (title.strip(),))
+        conn.commit()
+        return cursor.rowcount > 0

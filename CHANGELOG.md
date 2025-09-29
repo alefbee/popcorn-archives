@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.0] - 2025-09-29
+
+### Added
+- **New `watchlist` Command**: A completely new command group to manage a separate "watchlist" or "to-download" list. It is independent of the main archive and supports adding, deleting, and viewing titles.
+- **Shell Completion Support**: The application now supports shell auto-completion for commands and options (for Bash, Zsh, and Fish), making it significantly faster for frequent users. A guide for activation has been added to the documentation.
+
+### Changed
+- **Dependencies**: Added the `click-completion` library to enable the new shell completion feature.
+
+
 ## [4.1.1] - 2025-09-25
 
 - **Improved Letterboxd Import Matching**: The Letterboxd import feature is now smarter at matching movies. It normalizes titles by removing special characters (like `:`) before comparison. This allows it to correctly identify and update existing movies that were added via `scan` from folder names with platform-specific character limitations (e.g., matching "X-Men First Class" with "X-Men: First Class").

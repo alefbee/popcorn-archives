@@ -43,6 +43,7 @@ Take a tour of a typical user session in this single demonstration. The animatio
 -   **Flexible Importing**: Seamlessly build your collection by **scanning** directories of movie folders, **importing** from standard CSV files, Excel files or migrating your entire history from a **Letterboxd** ZIP export.
 -   **Personal Ratings & Watched Status**: Keep track of what you've seen with `watch`/`unwatch` and rate movies on a 1-10 scale with the `rate` command. Your Letterboxd ratings are imported automatically!
 -   **Keep Your Archive Rich**: Use the `update` command to fetch rich metadata for your entire collection at once. The process is robust and provides a detailed summary of successes and failures.
+-   **Separate Watchlist**: Manage a lightweight "to-watch" or "to-download" list completely separate from your main archive, using the new `watchlist` command.
 
 ### 🔎 Discovery & Exploration
 -   **Smart & Interactive `info`**: A powerful command that finds movies both locally and online, with interactive menus for ambiguous queries.
@@ -151,6 +152,8 @@ Here is a summary of the available commands:
 | **Watched Status** | | |
 | `watch` | Marks a movie as watched. | `poparch watch "The Matrix 1999"` |
 | `unwatch`| Marks a movie as unwatched. | `poparch unwatch "The Matrix 1999"` |
+| **watchlist** | | |
+| `watchlist`| Manages a separate list of movies to watch. | `poparch watchlist --add "Dune"` |```
 | **Configuration & Maintenance** | | |
 | `config`| Sets the TMDb API key. | `poparch config --key <your_key>` |
 | `update`| Fetches missing details for all movies. | `poparch update --force` |
@@ -190,7 +193,7 @@ Popcorn Archives is actively being developed. Here's a look at some of the excit
     -   Expand the application's scope to include tracking and managing TV series in addition to movies.
 
 ### UI/UX Improvements
--   [ ] **Shell Completion**:
+-   [x] **Shell Completion**:
     -   Implement shell completion for commands and options (e.g., `poparch s<TAB>`), making the tool faster to use for power users.
 -   [ ] **Full Data Export/Import**:
     -   Add a `--full` flag to the `export` command to save all movie details.

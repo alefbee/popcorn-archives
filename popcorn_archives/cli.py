@@ -10,6 +10,9 @@ from . import config as config_manager
 import inquirer
 import textwrap
 from . import logger as app_logger
+import click_completion
+
+click_completion.init()
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help'], max_content_width=120))
 @version_option(version=version("popcorn-archives"), prog_name="popcorn-archives")
@@ -891,6 +894,46 @@ def rate(name, rating):
         click.echo(click.style(f"Successfully rated '{title} ({year})' as {rating}/10.", fg='green'))
     else:
         click.echo(click.style(f"Error: {message}", fg='red'))
+
+@cli.command()
+@click.option('--add', 'add_movie', help="Add a movie title to your watchlist.")
+@click.option('--delete', 'delete_movie', help="Delete a movie from your watchlist.")
+def watchlist(add_movie, delete_movie):
+    """
+    Manage your watchlist of movies to download or watch later.
+    Running `poparch watchlist` with no options will display the current list.
+    """
+    from . import database # Lazy loading
+
+    # --- Logic for --add ---
+    if add_movie:
+        if database.add_to_watchlist(add_movie):
+            click.echo(click.style(f"'{add_movie.title()}' added to your watchlist.", fg='green'))
+        else:
+            click.echo(click.style(f"'{add_movie.title()}' is already on your watchlist.", fg='yellow'))
+        return
+
+    # --- Logic for --delete ---
+    if delete_movie:
+        if database.remove_from_watchlist(delete_movie):
+            click.echo(click.style(f"'{delete_movie.title()}' removed from your watchlist.", fg='green'))
+        else:
+            click.echo(click.style(f"'{delete_movie.title()}' was not found on your watchlist.", fg='red'))
+        return
+
+    # --- Default behavior: Display the list ---
+    click.echo(click.style("\n🎬 Your Watchlist", bold=True, fg='cyan'))
+    click.echo("=" * 20)
+    
+    current_list = database.get_watchlist()
+    if not current_list:
+        click.echo("Your watchlist is empty.")
+        click.echo("\nUse `poparch watchlist --add \"Movie Title\"` to add something.")
+    else:
+        for i, title in enumerate(current_list, 1):
+            click.echo(f"  {i}. {title}")
+    
+    click.echo("") # Final newline for spacing
 
 @cli.group()
 def log():
