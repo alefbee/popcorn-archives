@@ -76,6 +76,7 @@ git clone https://github.com/alefbee/popcorn-archives.git
 cd popcorn-archives
 pipx install .
 The `poparch` command is now ready to use!
+```
 
 ### Option 2: For Development
 
