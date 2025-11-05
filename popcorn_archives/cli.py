@@ -103,7 +103,7 @@ def stats():
 
 
 @cli.command()
-@click.argument('name')
+@click.argument('name', nargs=-1)  # دریافت همه آرگومان‌ها به صورت tuple
 def add(name):
     """
     Adds a new movie to the archive.
@@ -112,9 +112,13 @@ def add(name):
     Example: popcorn-archives add "The Kid 1921"
     """
     from . import core
-    title, year = core.parse_movie_title(name)
+
+    # همه کلمات را به یک رشته تبدیل کن
+    full_name = ' '.join(name)
+
+    title, year = core.parse_movie_title(full_name)
     if not title or not year:
-        click.echo(click.style(f"Error: Invalid movie format '{name}'. Must be 'Title YYYY'.", fg='red'))
+        click.echo(click.style(f"Error: Invalid movie format '{full_name}'. Must be 'Title YYYY'.", fg='red'))
         return
 
     if database.add_movie(title, year):
@@ -477,26 +481,46 @@ def delete(name):
 @click.argument('filepath', type=click.Path(dir_okay=False, writable=True))
 def export(filepath):
     """Exports the entire movie archive to a CSV file."""
+    import csv
+    import os
+    from tqdm import tqdm
+
     click.echo(f"Exporting archive to '{filepath}'...")
-    
+
+    if not filepath.lower().endswith('.csv'):
+        filepath += '.csv'
+
     all_movies = database.get_all_movies()
     if not all_movies:
         click.echo(click.style("Archive is empty. Nothing to export.", fg='yellow'))
         return
 
+    def clean_title(title: str) -> str:
+        """Remove leading/trailing quotes and whitespace."""
+        return title.strip().strip('\'"')
+
     try:
         with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
-            
+
             writer.writerow(['name'])
-            
+
             for title, year in tqdm(all_movies, desc="Exporting"):
-                writer.writerow([f"{title} {year}"])
-        
-        click.echo(click.style(f"Successfully exported {len(all_movies)} movies to '{filepath}'.", fg='green'))
+                cleaned_title = clean_title(title)
+                writer.writerow([f"{cleaned_title} {year}"])
+
+        click.echo(click.style(
+            f"Successfully exported {len(all_movies)} movies to '{filepath}'.",
+            fg='green'
+        ))
 
     except IOError as e:
-        click.echo(click.style(f"Error: Could not write to file at '{filepath}'.\n{e}", fg='red'))
+        click.echo(click.style(
+            f"Error: Could not write to file at '{filepath}'.\n{e}",
+            fg='red'
+        ))
+
+
 
 @cli.command()
 def clear():

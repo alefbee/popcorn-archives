@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.1] - 2025-11-05
+
+### Added
+- Improved error handling and feedback in the `add` command when parsing movie titles.
+- Enhanced the `parse_movie_title` function to correctly parse movie titles with or without parentheses around the year and ignore trailing metadata like tags or resolution info.
+
+### Changed
+- Updated the `export` command to always save files with a `.csv` extension regardless of user input.
+- Refined CSV exporting behavior by relying on Python’s `csv.writer` built-in quoting, ensuring correct handling of movie titles containing commas or quotes without manual string quoting.
+- Fixed a bug in the `add` command where movie titles were improperly cased or truncated when parsing titles with parentheses around the year.
+- Improved CLI feedback messages to reflect accurate movie titles and years as parsed.
+
+### Fixed
+- Corrected parsing issues in `parse_movie_title` that caused failure on movie names with trailing metadata (e.g. `"Naked (1993) [BluRay] [1080p]"`).
+- Resolved CSV export file extension enforcement so output files are always `.csv`.
+
+
 ## [4.2.0] - 2025-09-29
 
 ### Added

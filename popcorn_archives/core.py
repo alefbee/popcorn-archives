@@ -11,15 +11,17 @@ from fuzzywuzzy import fuzz
 import click
 
 
+
 def parse_movie_title(name):
     """
     Parses the movie title and year from a string.
-    Supports "Title YYYY" and "Title (YYYY)" formats, ignoring trailing metadata.
+    Supports "Title YYYY" and "Title (YYYY)" formats.
+    Handles trailing metadata after year.
     Returns (None, None) if no valid year is found.
     """
     name = name.strip()
-    # This regex is more robust and handles both formats
-    match = re.match(r'^(.*?)[\s\(](\d{4})[\)]?.*$', name)
+    # سال 4 رقمی با یا بدون پرانتز، قبل از متادیتای اضافی
+    match = re.match(r'^(.*?)\s*\(?(\d{4})\)?(?:\s*\[.*\])*$', name)
     if match:
         title = match.group(1).strip().title()
         year = int(match.group(2))
