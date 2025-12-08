@@ -30,9 +30,35 @@ def cli():
 
 
 @cli.command()
-def stats():
+@click.option('--directors', '-d', 'show_directors', is_flag=True, help="List top 50 directors with 2 or more movies.")
+@click.option('--actors', '-a', 'show_actors', is_flag=True, help="List top 50 actors with 3 or more movies.")
+def stats(show_directors, show_actors):
     """Displays a beautiful and personalized dashboard of your movie archive."""
     
+    if show_directors:
+        click.echo(click.style("\nDirectors with 2 or more movies in your archive (Top 50):", bold=True, fg='cyan'))
+        # --- FIX: Add the limit=50 parameter ---
+        top_directors = database.get_top_items_from_column('director', limit=50, min_count=2)
+        if not top_directors:
+            click.echo("No directors found matching the criteria.")
+            return
+        
+        for i, (name, count) in enumerate(top_directors, 1):
+            click.echo(f"  {i:>2}. {name:<30} ({count} movies)")
+        return
+
+    if show_actors:
+        click.echo(click.style("\nActors with 3 or more movies in your archive (Top 50):", bold=True, fg='cyan'))
+        # --- FIX: Add the limit=50 parameter ---
+        top_actors = database.get_top_items_from_column('cast', limit=50, min_count=3)
+        if not top_actors:
+            click.echo("No actors found matching the criteria.")
+            return
+
+        for i, (name, count) in enumerate(top_actors, 1):
+            click.echo(f"  {i:>2}. {name:<30} ({count} movies)")
+        return
+
     total_count = database.get_total_movies_count()
     if total_count == 0:
         click.echo("The archive is empty. Add some movies first!")

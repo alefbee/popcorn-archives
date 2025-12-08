@@ -425,7 +425,7 @@ def get_movies_by_name_list(name_list):
         cursor = conn.execute(sql, tuple(params))
         return cursor.fetchall()
     
-def get_top_items_from_column(column_name, limit=5):
+def get_top_items_from_column(column_name, limit=5, min_count=1):
     """
     A generic function to get the most common items from a comma-separated column.
     Used for genres, directors, cast, and keywords.
@@ -436,16 +436,17 @@ def get_top_items_from_column(column_name, limit=5):
         cursor = conn.execute(sql)
         
         # Counter is a powerful tool for counting items in a list.
-        item_counter = Counter()
+    item_counter = Counter()
+    for row in cursor.fetchall():
+        items = [item.strip() for item in row[column_name].split(',') if item.strip()]
+        item_counter.update(items)
         
-        for row in cursor.fetchall():
-            # Split the comma-separated string into individual items.
-            items = [item.strip() for item in row[column_name].split(',')]
-            # Update the counter with the items from this row.
-            item_counter.update(items)
-            
-        # Return the N most common items and their counts.
-        return item_counter.most_common(limit)
+    # --- NEW: Filter items by minimum count ---
+    filtered_items = {item: count for item, count in item_counter.items() if count >= min_count}
+    # Convert back to a list of tuples and sort
+    sorted_items = sorted(filtered_items.items(), key=lambda x: x[1], reverse=True)
+    
+    return sorted_items[:limit]
 
 def get_extreme_runtime_movies():
     """Finds the movies with the minimum and maximum runtime."""
